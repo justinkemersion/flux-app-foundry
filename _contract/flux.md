@@ -18,7 +18,7 @@ Do not call `fetch()` against `FLUX_URL` anywhere else (enforced by Vitest).
 |----------|---------|
 | `FLUX_URL` | PostgREST base URL |
 | `FLUX_GATEWAY_JWT_SECRET` | HS256 signing secret |
-| `FLUX_POSTGREST_SCHEMA` | `Accept-Profile` / `Content-Profile` for v2_shared API schema |
+| `FLUX_POSTGREST_SCHEMA` | `Accept-Profile` / `Content-Profile` — set via `pnpm flux:schema:sync` from `flux.json` |
 | `FLUX_TLS_INSECURE` | Dev-only; `1` disables TLS verify |
 
 ## Resource helpers

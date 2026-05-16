@@ -32,6 +32,10 @@ Run on every PR:
 - No raw `fetch` under `lib/` except `lib/flux/client.ts`
 - Migrations contain RLS invariant and grants
 
+## Dependencies
+
+Follow `_contract/dependency-policy.md`. Weekly CI runs `deps:check` and `deps:audit` (report only).
+
 ## Workflow
 
 Major work starts with a plan in `plans/`. Execute one plan at a time.

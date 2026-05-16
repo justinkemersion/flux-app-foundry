@@ -37,6 +37,9 @@ yarn-error.log*
 # local plans and agent artifacts (not committed)
 .local/
 
+# dependency report artifacts (CI uploads these)
+.local/deps-reports/
+
 # vercel
 .vercel
 

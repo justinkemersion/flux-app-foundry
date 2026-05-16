@@ -22,9 +22,10 @@ RLS alone is insufficient. Every migration tranche must `GRANT` table access to 
 
 ## Migrations
 
-- Numbered files: `0001_*.sql`, `0002_*_grants.sql`, `0003_*_flux_api_schema.sql`
-- Flux v2_shared: duplicate DDL into `t_<hash>_api` schema; set `FLUX_POSTGREST_SCHEMA` after `flux push`
-- Replace `{{FLUX_API_SCHEMA}}` placeholder before applying api-schema migrations
+- Numbered files: `0001_*.sql`, `0002_*_grants.sql`, domain DDL, `*_grants.sql`
+- Use **unqualified** table names; Flux applies migrations in the API schema context (`t_<hash>_api`)
+- After `flux push`, run `pnpm flux:schema:sync` — never hand-edit schema names into SQL
+- No `{{placeholders}}` in committed migration files
 
 ## Identifiers
 

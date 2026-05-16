@@ -1,0 +1,11 @@
+---
+description: Forking and baseline tracking rules
+globs: FOUNDRY_BASELINE.md,_drift/**/*,docs/FIRST_FORK.md,flux.json
+alwaysApply: false
+---
+
+Read `_contract/forking.md` and `docs/FIRST_FORK.md` when creating or syncing a fork.
+
+- Track baseline in `FOUNDRY_BASELINE.md`
+- Document dependency pins in `_drift/dependency-exceptions.md`
+- Never edit applied upstream migrations; add new numbered files only

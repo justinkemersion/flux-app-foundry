@@ -1,0 +1,14 @@
+---
+description: Dependency and package upgrade rules
+globs: package.json,pnpm-lock.yaml,_contract/dependency-policy.md,_drift/**/*
+alwaysApply: false
+---
+
+Read `_contract/dependency-policy.md` before adding or upgrading packages.
+
+- No random dependencies; no overlapping UI libraries
+- No framework major upgrades during feature work
+- Fork pins go in `_drift/dependency-exceptions.md`
+- After changes: `pnpm foundry:verify` and `pnpm test`
+
+Use `prompts/upgrade-dependencies.md` for maintenance passes.

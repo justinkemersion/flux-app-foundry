@@ -7,7 +7,7 @@ const INVARIANT =
 
 const dir = __dirname;
 const sqlFiles = readdirSync(dir).filter(
-  (f) => f.endsWith(".sql") && !f.includes("grants") && f !== "0003_profiles_flux_api_schema.sql",
+  (f) => f.endsWith(".sql") && !f.includes("grants"),
 );
 
 describe("RLS migrations", () => {
@@ -39,10 +39,11 @@ describe("grants migrations", () => {
   });
 });
 
-describe("0003_profiles_flux_api_schema.sql", () => {
-  it("uses placeholder schema and RLS invariant", () => {
-    const sql = readFileSync(join(dir, "0003_profiles_flux_api_schema.sql"), "utf8");
-    expect(sql).toContain("{{FLUX_API_SCHEMA}}");
-    expect(sql.split(INVARIANT).length - 1).toBeGreaterThanOrEqual(4);
+describe("SQL hygiene", () => {
+  it("has no template placeholders in committed migrations", () => {
+    for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql"))) {
+      const sql = readFileSync(join(dir, file), "utf8");
+      expect(sql, file).not.toMatch(/\{\{/);
+    }
   });
 });

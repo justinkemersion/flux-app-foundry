@@ -13,12 +13,16 @@ const REQUIRED_FILES = [
   "cursor-workflow.md",
   "component-rules.md",
   "route-rules.md",
+  "dependency-policy.md",
+  "forking.md",
 ];
 
 const REQUIRED_HEADINGS = {
   "database.md": ["## RLS invariant"],
   "flux.md": ["## HTTP boundary"],
   "anti-drift.md": ["## CI gates"],
+  "dependency-policy.md": ["## Source of truth", "## Forbidden"],
+  "forking.md": ["## Forbidden"],
 };
 
 const MIN_LINES = 20;

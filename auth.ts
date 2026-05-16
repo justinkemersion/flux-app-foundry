@@ -2,22 +2,24 @@ import NextAuth from "next-auth";
 import type { Provider } from "next-auth/providers";
 import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
+import { configuredAuthProviderIds } from "@/lib/config/env";
 
 function buildProviders(): Provider[] {
   const providers: Provider[] = [];
-  if (process.env.AUTH_GITHUB_ID && process.env.AUTH_GITHUB_SECRET) {
+  const ids = configuredAuthProviderIds();
+  if (ids.includes("github")) {
     providers.push(
       GitHub({
-        clientId: process.env.AUTH_GITHUB_ID,
-        clientSecret: process.env.AUTH_GITHUB_SECRET,
+        clientId: process.env.AUTH_GITHUB_ID!,
+        clientSecret: process.env.AUTH_GITHUB_SECRET!,
       }),
     );
   }
-  if (process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET) {
+  if (ids.includes("google")) {
     providers.push(
       Google({
-        clientId: process.env.AUTH_GOOGLE_ID,
-        clientSecret: process.env.AUTH_GOOGLE_SECRET,
+        clientId: process.env.AUTH_GOOGLE_ID!,
+        clientSecret: process.env.AUTH_GOOGLE_SECRET!,
       }),
     );
   }
@@ -26,7 +28,7 @@ function buildProviders(): Provider[] {
 
 const providers = buildProviders();
 
-if (providers.length === 0) {
+if (providers.length === 0 && process.env.NODE_ENV !== "test") {
   throw new Error(
     "No auth providers configured. Set AUTH_GITHUB_* and/or AUTH_GOOGLE_* in .env",
   );

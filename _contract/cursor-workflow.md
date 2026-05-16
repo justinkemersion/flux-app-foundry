@@ -2,7 +2,7 @@
 
 ## Before coding
 
-1. Read relevant `_contract/*.md` files
+1. Read relevant `_contract/*.md` files (including `dependency-policy.md` when touching `package.json`)
 2. Read the active `plans/NNN-*.md` checklist
 3. Use a `prompts/*.md` template when applicable
 
