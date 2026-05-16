@@ -25,12 +25,20 @@ Run on every PR:
 5. `pnpm check:file-sizes`
 6. `pnpm check:imports`
 7. `pnpm check:contracts`
-8. `pnpm build`
+8. `pnpm check:sql`
+9. `pnpm check:graph`
+10. `pnpm build`
 
 ## Vitest guards
 
 - No raw `fetch` under `lib/` except `lib/flux/client.ts`
 - Migrations contain RLS invariant and grants
+
+## Observability
+
+Run `pnpm foundry:report` after structural changes. Reports land in `.local/reports/`; inventories in `docs/generated/`.
+
+`pnpm check:graph` enforces circular-import and dependency-cruiser rules.
 
 ## Dependencies
 

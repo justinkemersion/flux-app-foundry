@@ -2,7 +2,7 @@
 
 A disciplined Flux-first CRUDe application system for contract-driven, anti-drift development with Cursor.
 
-**Status:** Milestone 0.1 working foundation · 0.2 hardening (fork-safe setup).
+**Status:** Milestone 0.1 foundation · 0.2 hardening · 0.3 observability.
 
 ## Stack
 
@@ -35,6 +35,7 @@ See [`sql/migrations/README.md`](sql/migrations/README.md).
 
 | Command | Purpose |
 |---------|---------|
+| `pnpm foundry:report` | Architecture reports + generated route/component inventories |
 | `pnpm foundry:doctor` | Validate env, Flux config, SQL hygiene, tooling |
 | `pnpm foundry:verify` | Full gate: lint, typecheck, test, drift, build |
 | `pnpm foundry:new-app-check` | Fork readiness (baseline, contracts, flux hash) |
@@ -54,9 +55,14 @@ Track lineage in `FOUNDRY_BASELINE.md` and pins in `_drift/dependency-exceptions
 2. Use `prompts/` templates for repeatable tasks
 3. Run `pnpm foundry:verify` before finishing
 
+## Philosophy
+
+Essays in [`docs/philosophy/`](docs/philosophy/) describe the methodology (AI-assisted, anti-drift, Flux-first, boring CRUD).
+
 ## Repository layout
 
 - `_contract/` — enforceable laws (including `dependency-policy.md`, `forking.md`)
+- `docs/generated/` — inventories from `foundry:report` (gitignored; see README there)
 - `_drift/` — fork exception log
 - `lib/config/` — typed env + Flux schema helpers
 - `plans/` — phased execution checklists
