@@ -25,9 +25,15 @@ Open [http://localhost:3000](http://localhost:3000). Sign in, then use `/dashboa
 
 ## Flux setup
 
-1. `flux init` or link your project; update `flux.json` slug/hash.
-2. `flux push` — applies `sql/migrations/` in your API schema context (no manual schema editing).
-3. `pnpm flux:schema:sync` — writes `FLUX_POSTGREST_SCHEMA=t_<hash>_api` to `.env.local`.
+Create the Flux project **before** domain SQL. Full guide: [`docs/FLUX_WORKFLOW.md`](docs/FLUX_WORKFLOW.md).
+
+```bash
+flux login
+flux init                    # or link — 7-char hash in flux.json (from flux list)
+flux push sql/migrations/…     # each file in order
+pnpm flux:schema:sync          # FLUX_POSTGREST_SCHEMA → .env.local (control-plane apiSchema)
+pnpm flux:doctor               # control plane + gateway bridge probes
+```
 
 See [`sql/migrations/README.md`](sql/migrations/README.md).
 
@@ -36,11 +42,12 @@ See [`sql/migrations/README.md`](sql/migrations/README.md).
 | Command | Purpose |
 |---------|---------|
 | `pnpm foundry:report` | Architecture reports + generated route/component inventories |
-| `pnpm foundry:doctor` | Validate env, Flux config, SQL hygiene, tooling (preflight for app work) |
+| `pnpm flux:doctor` | Flux control plane, schema sync, gateway bridge probes |
+| `pnpm foundry:doctor` | App env, OAuth, SQL hygiene + Flux checks when `FLUX_URL` is set |
 | `pnpm foundry:verify:template` | CI / fresh clone: lint, typecheck, test, drift, fork check, build — **no `.env`** |
 | `pnpm foundry:verify` | Full gate with your `.env`: run `foundry:doctor` first on forks |
 | `pnpm foundry:new-app-check` | Fork readiness (baseline, contracts, flux hash) |
-| `pnpm flux:schema:sync` | Derive PostgREST schema from `flux.json` |
+| `pnpm flux:schema:sync` | Write `FLUX_POSTGREST_SCHEMA` to `.env.local` from control plane |
 | `pnpm deps:check` / `pnpm deps:audit` | Dependency maintenance |
 | `pnpm seed:demo` | Seed sample data (`DEMO_USER_SUB` required) |
 
@@ -54,7 +61,7 @@ Track lineage in `FOUNDRY_BASELINE.md` and pins in `_drift/dependency-exceptions
 
 1. Read `_contract/` and the active `plans/NNN-*.md`
 2. Use `prompts/` templates for repeatable tasks
-3. Template repo: `pnpm foundry:verify:template`. Fork with `.env`: `pnpm foundry:doctor` then `pnpm foundry:verify`
+3. Template repo: `pnpm foundry:verify:template`. Fork with `.env`: `pnpm flux:doctor`, `pnpm foundry:doctor`, then `pnpm foundry:verify`
 
 ## Philosophy
 

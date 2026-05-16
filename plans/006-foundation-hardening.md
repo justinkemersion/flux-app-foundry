@@ -17,7 +17,8 @@ Make the foundation fork-safe, repeatable, and resistant to manual setup drift.
 - [x] Dependency check workflow
 - [x] Setup verification (doctor + `check:sql`)
 - [x] First fork guide (`docs/FIRST_FORK.md`)
-- [x] `pnpm flux:schema:sync` derives PostgREST schema from `flux.json`
+- [x] `pnpm flux:schema:sync` derives PostgREST schema from control plane / `flux.json`
+- [x] `pnpm flux:doctor` + `_contract/flux-workflow.md` (plan 010)
 - [x] `foundry:verify` runs full gate suite
 
 ## Exit

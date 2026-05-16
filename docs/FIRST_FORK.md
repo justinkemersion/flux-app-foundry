@@ -27,7 +27,6 @@ Local deviations:
 ```
 
 4. Keep `_drift/dependency-exceptions.md` empty unless you pin a package.
-5. Update `flux.json` `slug` to match your Flux project (after `flux init`).
 
 ## 3. Environment
 
@@ -37,15 +36,23 @@ cp .env.example .env
 pnpm install
 ```
 
-## 4. Flux project
+## 4. Flux project (before SQL)
+
+Create and verify the Flux project **before** writing or pushing domain migrations. See [`docs/FLUX_WORKFLOW.md`](FLUX_WORKFLOW.md).
 
 ```bash
-flux init    # or link existing project
-flux push    # applies sql/migrations in API schema context
-pnpm flux:schema:sync
+flux login
+flux init              # or link existing project — updates flux.json slug + 7-char hash
+# FLUX_URL + FLUX_GATEWAY_JWT_SECRET from: flux project credentials <slug> --hash <hash>
+
+flux push sql/migrations/0001_profiles.sql
+# … every file in sql/migrations/ in order
+
+pnpm flux:schema:sync  # writes FLUX_POSTGREST_SCHEMA to .env.local (v2 apiSchema)
+pnpm flux:doctor       # control plane + gateway bridge probes
 ```
 
-Do **not** search-replace schema names in SQL. Migrations are unqualified; Flux applies them in `t_<hash>_api`.
+Do **not** search-replace schema names in SQL. Migrations are unqualified; Flux applies them in the tenant API schema (`t_<12hex>_api` on v2_shared).
 
 ## 5. Verify
 
@@ -58,9 +65,10 @@ pnpm foundry:verify:template
 **Configured app (after `.env` + Flux sync):**
 
 ```bash
-pnpm foundry:doctor      # preflight — env, OAuth, flux hash, schema
+pnpm flux:doctor
+pnpm foundry:doctor
 pnpm foundry:new-app-check
-pnpm foundry:verify        # same gates as template + build using your secrets
+pnpm foundry:verify
 ```
 
 `foundry:verify` requires a configured app environment. `foundry:verify:template` checks repo structure and compiles with CI stub env only (no real secrets).
@@ -76,3 +84,4 @@ pnpm foundry:verify        # same gates as template + build using your secrets
 
 - Monthly: `pnpm deps:check`, follow `prompts/upgrade-dependencies.md`
 - When syncing upstream: update `FOUNDRY_BASELINE.md` last-synced date
+- After Flux platform changes: `pnpm flux:doctor`

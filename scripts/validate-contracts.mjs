@@ -9,6 +9,7 @@ const REQUIRED_FILES = [
   "design.md",
   "database.md",
   "flux.md",
+  "flux-workflow.md",
   "anti-drift.md",
   "cursor-workflow.md",
   "component-rules.md",
@@ -20,6 +21,7 @@ const REQUIRED_FILES = [
 const REQUIRED_HEADINGS = {
   "database.md": ["## RLS invariant"],
   "flux.md": ["## HTTP boundary"],
+  "flux-workflow.md": ["## Setup order", "## v2_shared JWT bridge invariant"],
   "anti-drift.md": ["## CI gates"],
   "dependency-policy.md": ["## Source of truth", "## Forbidden"],
   "forking.md": ["## Forbidden"],

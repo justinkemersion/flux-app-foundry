@@ -1,0 +1,11 @@
+---
+description: Flux platform setup order and doctor commands
+globs: sql/migrations/**/*,scripts/flux*.ts,scripts/**/flux*.ts,lib/flux/**/*
+---
+
+Read `_contract/flux-workflow.md` and `docs/FLUX_WORKFLOW.md` before Flux or SQL work.
+
+- Create Flux project (`flux login`, `flux init`) **before** new SQL migrations
+- Run `pnpm flux:schema:sync` then `pnpm flux:doctor` after `flux push`
+- v2_shared: app JWT uses `role: authenticated`; gateway bridges to `t_*_role`
+- Never set empty `FLUX_POSTGREST_SCHEMA=` in `.env` — use `.env.local` only

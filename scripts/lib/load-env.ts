@@ -20,9 +20,8 @@ export function loadEnvFiles(root = process.cwd()): void {
       ) {
         value = value.slice(1, -1);
       }
-      if (process.env[key] === undefined) {
-        process.env[key] = value;
-      }
+      // Later files (.env.local) override earlier ones, matching Next.js.
+      process.env[key] = value;
     }
   }
 }

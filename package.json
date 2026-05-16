@@ -31,7 +31,8 @@
     "foundry:new-app-check": "tsx scripts/foundry-new-app-check.ts",
     "foundry:verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm check:drift && pnpm build",
     "foundry:verify:template": "tsx scripts/foundry-verify-template.ts",
-    "flux:schema:sync": "tsx scripts/flux-schema-sync.ts"
+    "flux:schema:sync": "tsx scripts/flux-schema-sync.ts",
+    "flux:doctor": "tsx scripts/flux-doctor.ts"
   },
   "dependencies": {
     "jose": "^6.2.3",

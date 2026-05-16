@@ -1,5 +1,7 @@
 # Flux integration contract
 
+Platform setup order and gateway bridge rules: **`_contract/flux-workflow.md`**. Operator guide: **`docs/FLUX_WORKFLOW.md`**.
+
 ## HTTP boundary
 
 All Flux / PostgREST HTTP must go through `lib/flux/client.ts` → `fluxJson(sub, path, init)`.
@@ -18,7 +20,7 @@ Do not call `fetch()` against `FLUX_URL` anywhere else (enforced by Vitest).
 |----------|---------|
 | `FLUX_URL` | PostgREST base URL |
 | `FLUX_GATEWAY_JWT_SECRET` | HS256 signing secret |
-| `FLUX_POSTGREST_SCHEMA` | `Accept-Profile` / `Content-Profile` — set via `pnpm flux:schema:sync` from `flux.json` |
+| `FLUX_POSTGREST_SCHEMA` | `Accept-Profile` / `Content-Profile` — set via `pnpm flux:schema:sync` (control-plane `apiSchema` on v2_shared); lives in `.env.local` only |
 | `FLUX_TLS_INSECURE` | Dev-only; `1` disables TLS verify |
 
 ## Resource helpers
