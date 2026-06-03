@@ -1,8 +1,10 @@
 # Cursor workflow contract
 
+Umbrella: [**robust workflow**](robust-workflow.md) (git deploy, no shims, plan-bound scope).
+
 ## Before coding
 
-1. Read relevant `_contract/*.md` files (including `deploy.md` before shipping to a host, and `dependency-policy.md` when touching `package.json`)
+1. Read relevant `_contract/*.md` files (including `robust-workflow.md`, `deploy.md` before shipping to a host, and `dependency-policy.md` when touching `package.json`)
 2. Read the active `plans/NNN-*.md` checklist
 3. Use a `prompts/*.md` template when applicable
 
@@ -24,4 +26,4 @@
 
 ## No-shim principle
 
-If platform friction appears, fix upstream or document in a plan — do not add hidden compatibility shims.
+If platform friction appears, fix upstream or document in a plan — do not add hidden compatibility shims. Full rules: [`robust-workflow.md`](robust-workflow.md).

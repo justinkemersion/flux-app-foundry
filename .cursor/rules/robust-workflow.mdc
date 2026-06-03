@@ -1,0 +1,10 @@
+---
+description: Robust engineering workflow — no shims, no bypassing contracts
+alwaysApply: true
+---
+
+Follow [`_contract/robust-workflow.md`](../_contract/robust-workflow.md).
+
+- **Git for code:** commit → push → `git pull` on servers ([`deploy.md`](../_contract/deploy.md)). No rsync/scp of source trees without a documented emergency.
+- **No shims:** fix upstream or update `_contract/` + `plans/` — no hidden compatibility layers or duplicate paths for the same capability.
+- **Stay in bounds:** active plan scope, anti-drift LOC limits, Flux workflow order (`flux-workflow.md`), `pnpm check:drift` / `foundry:doctor` before done.

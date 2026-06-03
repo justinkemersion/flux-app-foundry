@@ -59,9 +59,10 @@ Track lineage in `FOUNDRY_BASELINE.md` and pins in `_drift/dependency-exceptions
 
 ## Cursor workflow
 
-1. Read `_contract/` and the active `plans/NNN-*.md`
+1. Read `_contract/` (start with [`_contract/robust-workflow.md`](_contract/robust-workflow.md)) and the active `plans/NNN-*.md`
 2. Use `prompts/` templates for repeatable tasks
-3. Template repo: `pnpm foundry:verify:template`. Fork with `.env`: `pnpm flux:doctor`, `pnpm foundry:doctor`, then `pnpm foundry:verify`
+3. **Deploy code via git only** — [`_contract/deploy.md`](_contract/deploy.md); no rsync/scp shims
+4. Template repo: `pnpm foundry:verify:template`. Fork with `.env`: `pnpm flux:doctor`, `pnpm foundry:doctor`, then `pnpm foundry:verify`
 
 ## Philosophy
 
@@ -69,7 +70,7 @@ Essays in [`docs/philosophy/`](docs/philosophy/) describe the methodology (AI-as
 
 ## Repository layout
 
-- `_contract/` — enforceable laws (including `dependency-policy.md`, `forking.md`)
+- `_contract/` — enforceable laws (`robust-workflow.md`, `deploy.md`, `dependency-policy.md`, `forking.md`, …)
 - `docs/generated/` — inventories from `foundry:report` (gitignored; see README there)
 - `_drift/` — fork exception log
 - `lib/config/` — typed env + Flux schema helpers

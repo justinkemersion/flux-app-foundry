@@ -1,6 +1,6 @@
 # Deploy contract
 
-Foundry forks and Flux platform work must treat **git as the source of truth** for application and contract code on every host.
+Part of the [**robust workflow**](robust-workflow.md) boundary set. Foundry forks and Flux platform work must treat **git as the source of truth** for application and contract code on every host.
 
 ## Non-negotiable
 
@@ -13,6 +13,7 @@ Foundry forks and Flux platform work must treat **git as the source of truth** f
 - `rsync`, `scp` of source trees, or copying working-tree files to bypass git
 - Leaving a server checkout dirty with changes that are not on `origin`
 - “Quick sync” of uncommitted agent edits to production
+- Deploy **shims** (undeclared scripts, dual code paths, or manual server edits) — see [`robust-workflow.md`](robust-workflow.md)
 
 Environment and secrets files stay out of git; copying `.env` with `scp` is fine for secrets only, not for code.
 
