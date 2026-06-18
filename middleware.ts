@@ -1,13 +1,6 @@
-import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 
-export default auth((req) => {
-  const requestHeaders = new Headers(req.headers);
-  requestHeaders.set("x-pathname", req.nextUrl.pathname);
-  return NextResponse.next({
-    request: { headers: requestHeaders },
-  });
-});
+export default auth;
 
 export const config = {
   matcher: [

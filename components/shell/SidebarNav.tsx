@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/ui/cn";
 
 const links = [
@@ -8,7 +11,9 @@ const links = [
   { href: "/settings/profile", label: "Profile" },
 ];
 
-export function SidebarNav({ pathname }: { pathname: string }) {
+export function SidebarNav() {
+  const pathname = usePathname();
+
   return (
     <nav className="flex flex-col gap-1 p-4">
       {links.map((link) => (

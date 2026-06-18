@@ -4,11 +4,9 @@ import { TopBar } from "./TopBar";
 
 export function AppShell({
   children,
-  pathname,
   email,
 }: {
   children: ReactNode;
-  pathname: string;
   email?: string | null;
 }) {
   return (
@@ -16,7 +14,7 @@ export function AppShell({
       <TopBar email={email} />
       <div className="flex flex-1">
         <aside className="w-52 shrink-0 border-r border-[var(--border)]">
-          <SidebarNav pathname={pathname} />
+          <SidebarNav />
         </aside>
         <main className="flex-1 p-6">{children}</main>
       </div>
