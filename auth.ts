@@ -34,11 +34,25 @@ if (providers.length === 0 && process.env.NODE_ENV !== "test") {
   );
 }
 
+function jwtSessionInnerError(error: Error): Error | undefined {
+  if (error.name !== "JWTSessionError") return undefined;
+  const cause = error.cause;
+  if (cause instanceof Error) return cause;
+  if (cause && typeof cause === "object" && "err" in cause) {
+    const inner = (cause as { err?: unknown }).err;
+    if (inner instanceof Error) return inner;
+  }
+  return undefined;
+}
+
+/** Auth.js clears the session cookie after JWTSessionError; treat as logged-out, not fatal. */
 function isStaleSessionCookieError(error: Error): boolean {
+  if (error.name !== "JWTSessionError") return false;
+  const inner = jwtSessionInnerError(error);
+  if (!inner) return true;
   return (
-    error.name === "JWTSessionError" &&
-    error.cause instanceof Error &&
-    error.cause.message.includes("no matching decryption secret")
+    inner.message.includes("no matching decryption secret") ||
+    inner.message === "Invalid JWT"
   );
 }
 
