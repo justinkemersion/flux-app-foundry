@@ -1,0 +1,38 @@
+---
+description: Apply SQL migrations only through Flux versioned ledger push
+globs: sql/migrations/**/*
+alwaysApply: false
+---
+
+# Migration ledger (required)
+
+Schema changes under `sql/migrations/` must reach Postgres **only** through Flux **versioned** push so each file is recorded in `flux.flux_migrations`. Never bypass the ledger.
+
+## Allowed
+
+```bash
+flux push sql/migrations/ --plan      # preview skip / apply / conflicts
+flux push sql/migrations/ --dry-run   # validate; apply nothing
+flux push sql/migrations/             # apply pending versioned migrations (preferred)
+
+flux push sql/migrations/0006_foo.sql --mode versioned   # single new file only
+flux migrations list                  # inspect remote ledger
+```
+
+After a successful push: `pnpm flux:schema:sync` (when schema/profile may have changed).
+
+## Forbidden
+
+- `flux push sql/migrations/*.sql` **without** `--mode versioned` — defaults to **raw** (no ledger; re-runs every time).
+- `--mode raw` or `--mode repeatable` for numbered schema migrations.
+- Direct SQL against the tenant DB (`psql`, `docker exec`, dashboard SQL console) for schema that belongs in git migrations.
+- Editing a migration file **after** it is in the ledger — add a new numbered file instead (checksum conflict is intentional).
+
+## Agent workflow
+
+1. Add a **new** numbered `NNNN_*.sql` file (and separate `*_grants.sql` when needed); keep tables unqualified.
+2. Run `flux push sql/migrations/ --plan`, then `flux push sql/migrations/`.
+3. Run `pnpm flux:schema:sync` and verify (`pnpm flux:doctor` / tests as appropriate).
+4. **Commit** the migration file(s), then **git push** — do not treat a remote-only or ad-hoc DB change as done.
+
+Repeatable seeds belong under `flux/scripts/` (or similar), not mixed into versioned migration numbering.
