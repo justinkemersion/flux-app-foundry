@@ -19,7 +19,7 @@ async function main() {
 
   if (failed.length > 0) {
     console.error(`\n${failed.length} Flux check(s) failed.`);
-    console.error("See docs/FLUX_WORKFLOW.md — create Flux project before SQL, then flux push → flux:schema:sync.");
+    console.error("See docs/FLUX_WORKFLOW.md — create Flux project before SQL, then flux push sql/migrations/ → flux:schema:sync.");
     process.exit(1);
   }
 

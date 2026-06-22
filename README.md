@@ -30,7 +30,7 @@ Create the Flux project **before** domain SQL. Full guide: [`docs/FLUX_WORKFLOW.
 ```bash
 flux login
 flux init                    # or link — 7-char hash in flux.json (from flux list)
-flux push sql/migrations/…     # each file in order
+flux push sql/migrations/      # versioned ledger (directory push)
 pnpm flux:schema:sync          # FLUX_POSTGREST_SCHEMA → .env.local (control-plane apiSchema)
 pnpm flux:doctor               # control plane + gateway bridge probes
 ```

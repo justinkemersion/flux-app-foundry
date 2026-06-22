@@ -45,8 +45,8 @@ flux login
 flux init              # or link existing project — updates flux.json slug + 7-char hash
 # FLUX_URL + FLUX_GATEWAY_JWT_SECRET from: flux project credentials <slug> --hash <hash>
 
-flux push sql/migrations/0001_profiles.sql
-# … every file in sql/migrations/ in order
+flux push sql/migrations/ --plan   # optional preview
+flux push sql/migrations/          # versioned ledger — all pending files in order
 
 pnpm flux:schema:sync  # writes FLUX_POSTGREST_SCHEMA to .env.local (v2 apiSchema)
 pnpm flux:doctor       # control plane + gateway bridge probes

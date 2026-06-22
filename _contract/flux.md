@@ -33,4 +33,4 @@ Catch `FluxHttpError` in server actions; return `{ ok: false, error: string }` t
 
 ## Migrations
 
-Schema changes are SQL files under `sql/migrations/` and pushed with Flux CLI (`flux push`).
+Schema changes are SQL files under `sql/migrations/` and pushed with **`flux push sql/migrations/`** (versioned directory mode; records in `flux.flux_migrations`). See `_contract/flux-workflow.md` — never single-file push without `--mode versioned`.

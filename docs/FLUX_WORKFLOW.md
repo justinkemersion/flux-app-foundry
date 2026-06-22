@@ -16,9 +16,8 @@ flux init                    # or link; sets slug + 7-char hash in flux.json
 cp .env.example .env
 # FLUX_URL + FLUX_GATEWAY_JWT_SECRET from: flux project credentials <slug> --hash <hash>
 
-flux push sql/migrations/0001_profiles.sql
-flux push sql/migrations/0002_profiles_grants.sql
-# … every migration in order (see sql/migrations/README.md)
+flux push sql/migrations/ --plan   # optional: preview skip / apply / conflicts
+flux push sql/migrations/          # versioned ledger — applies pending files in order
 
 pnpm flux:schema:sync        # writes FLUX_POSTGREST_SCHEMA to .env.local
 pnpm flux:doctor             # control plane + gateway probes
@@ -27,6 +26,18 @@ pnpm foundry:verify
 ```
 
 Create the Flux project **before** writing or pushing domain SQL. Migrations assume the tenant API schema already exists.
+
+## Migration ledger
+
+Always push schema through the **versioned** directory flow so each file is recorded in `flux.flux_migrations`:
+
+```bash
+flux push sql/migrations/ --plan
+flux push sql/migrations/
+flux migrations list
+```
+
+Do **not** push individual files like `flux push sql/migrations/0001_profiles.sql` without `--mode versioned` — Flux treats those as **raw** (no ledger). After a successful push, commit the SQL to git. Never edit a migration that is already in the ledger; add a new numbered file instead.
 
 ## v2_shared vs v1
 

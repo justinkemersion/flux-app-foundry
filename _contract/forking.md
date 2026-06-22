@@ -41,4 +41,4 @@ Periodically merge or cherry-pick from `flux-app-foundry`:
 
 ## Flux schema
 
-Do not hand-edit schema names in SQL. Use `pnpm flux:schema:sync` after `flux init` / `flux push` updates `flux.json`.
+Do not hand-edit schema names in SQL. Push with `flux push sql/migrations/` (versioned ledger), then `pnpm flux:schema:sync` after `flux init` / hash changes.

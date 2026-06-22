@@ -24,7 +24,8 @@ RLS alone is insufficient. Every migration tranche must `GRANT` table access to 
 
 - Numbered files: `0001_*.sql`, `0002_*_grants.sql`, domain DDL, `*_grants.sql`
 - Use **unqualified** table names; Flux applies migrations in the API schema context (`t_<hash>_api`)
-- After `flux push`, run `pnpm flux:schema:sync` — never hand-edit schema names into SQL
+- Apply with **`flux push sql/migrations/`** (versioned ledger); see `_contract/flux-workflow.md`
+- After push, run `pnpm flux:schema:sync` — never hand-edit schema names into SQL
 - No `{{placeholders}}` in committed migration files
 
 ## Identifiers
