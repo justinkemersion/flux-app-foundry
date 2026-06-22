@@ -36,7 +36,7 @@
   },
   "dependencies": {
     "jose": "^6.2.3",
-    "next": "15.5.15",
+    "next": "15.5.18",
     "next-auth": "5.0.0-beta.31",
     "react": "19.1.0",
     "react-dom": "19.1.0",
@@ -56,7 +56,7 @@
     "@vitejs/plugin-react": "^6.0.2",
     "dependency-cruiser": "^17.4.0",
     "eslint": "^9",
-    "eslint-config-next": "15.5.15",
+    "eslint-config-next": "15.5.18",
     "happy-dom": "^20.9.0",
     "madge": "^8.0.0",
     "prettier": "^3.8.3",
@@ -64,5 +64,10 @@
     "tsx": "^4.22.0",
     "typescript": "^5",
     "vitest": "^4.1.6"
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss": "8.5.10"
+    }
   }
 }
