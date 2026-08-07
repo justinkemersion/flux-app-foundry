@@ -18,6 +18,13 @@ Each exception needs: package name, pinned version, reason, owner, and review da
 - **Minor updates:** monthly maintenance pass using `prompts/upgrade-dependencies.md`.
 - **Major updates:** only through a planned upgrade branch with its own plan file.
 
+## Vulnerabilities
+
+- **High/critical** advisories on direct or runtime-critical transitive deps: open a dedicated patch PR promptly; bump the minimal safe version; re-run `pnpm deps:audit` and `pnpm foundry:verify:template`.
+- Do **not** wait for a broad dependency rewrite to address high/critical issues.
+- Weekly `dependency-check.yml` is **report-only** — it does not replace triage of high/critical findings.
+- Document temporary pins in `_drift/dependency-exceptions.md` with owner + review date.
+
 ## Maintenance commands
 
 | Command | Purpose |

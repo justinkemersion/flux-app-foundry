@@ -8,8 +8,10 @@ import {
   isDefaultAuthSecret,
 } from "../lib/config/env";
 import { isFluxHashConfigured, readFluxProjectConfig } from "../lib/config/flux-schema";
+import { evaluateBaselineStatus } from "./lib/baseline-manifest";
 import { runFluxDoctorChecks } from "./lib/flux-doctor-checks";
 import { loadEnvFiles } from "./lib/load-env";
+import { runSecurityInvariants } from "./lib/security-invariants";
 
 type Check = { name: string; ok: boolean; detail: string };
 
@@ -21,6 +23,32 @@ function check(name: string, ok: boolean, detail: string) {
 }
 
 loadEnvFiles(root);
+
+// Local baseline / security (no Flux credentials required)
+const securityChecks = runSecurityInvariants(root);
+const baseline = evaluateBaselineStatus({ root, securityChecks });
+// Unknown/legacy manifests are reported but do not fail doctor (backward compatible).
+check(
+  "baseline manifest",
+  true,
+  baseline.status === "unknown"
+    ? "legacy/unknown — missing foundry.baseline.json (run pnpm foundry:status)"
+    : `${baseline.status} @ ${baseline.baselineVersion ?? "?"} (${baseline.sourceCommit?.slice(0, 7) ?? "no-commit"})`,
+);
+check(
+  "baseline security",
+  baseline.status !== "missing_security",
+  baseline.status === "missing_security"
+    ? "security invariants failed — run pnpm foundry:status"
+    : `${securityChecks.filter((c) => c.ok).length}/${securityChecks.length} invariants ok`,
+);
+if (baseline.status === "locally_customized" || baseline.status === "behind") {
+  check(
+    "baseline drift",
+    true,
+    `${baseline.status} — informational; run pnpm foundry:status (non-destructive)`,
+  );
+}
 
 check(".env file", existsSync(join(root, ".env")), existsSync(join(root, ".env")) ? "found" : "missing — copy .env.example");
 

@@ -2,7 +2,9 @@
 
 A disciplined Flux-first CRUDe application system for contract-driven, anti-drift development with Cursor.
 
-**Status:** 0.1 foundation · 0.2 repeatable setup · 0.3 observable architecture · 0.4 fork-proven.
+**Status:** 0.1 foundation · 0.2 repeatable setup · 0.3 observable architecture · 0.4 fork-proven · **0.5 baseline lifecycle**.
+
+Machine baseline: [`foundry.baseline.json`](foundry.baseline.json) · ownership: [`docs/adr/001-baseline-ownership.md`](docs/adr/001-baseline-ownership.md) · agents: [`AGENTS.md`](AGENTS.md).
 
 ## Stack
 
@@ -43,10 +45,13 @@ See [`sql/migrations/README.md`](sql/migrations/README.md).
 |---------|---------|
 | `pnpm foundry:report` | Architecture reports + generated route/component inventories |
 | `pnpm flux:doctor` | Flux control plane, schema sync, gateway bridge probes |
-| `pnpm foundry:doctor` | App env, OAuth, SQL hygiene + Flux checks when `FLUX_URL` is set |
-| `pnpm foundry:verify:template` | CI / fresh clone: lint, typecheck, test, drift, fork check, build — **no `.env`** |
+| `pnpm foundry:doctor` | App env, OAuth, SQL hygiene, **local baseline/security**, + Flux checks when `FLUX_URL` is set |
+| `pnpm foundry:status` | Non-destructive baseline drift report (current/behind/customized/missing_security/unknown) |
+| `pnpm foundry:verify:template` | CI / fresh clone: lint, typecheck, test, drift, fork check, status, build — **no `.env`** |
+| `pnpm foundry:golden-app` | Materialize a temp app and validate generated output + status fixtures |
 | `pnpm foundry:verify` | Full gate with your `.env`: run `foundry:doctor` first on forks |
-| `pnpm foundry:new-app-check` | Fork readiness (baseline, contracts, flux hash) |
+| `pnpm foundry:new-app-check` | Fork readiness (baseline manifest, contracts, flux hash) |
+| `pnpm foundry:baseline:stamp` | Maintainer: refresh fingerprints + source.commit (Foundry upstream only) |
 | `pnpm flux:schema:sync` | Write `FLUX_POSTGREST_SCHEMA` to `.env.local` from control plane |
 | `pnpm deps:check` / `pnpm deps:audit` | Dependency maintenance |
 | `pnpm seed:demo` | Seed sample data (`DEMO_USER_SUB` required) |
@@ -55,7 +60,7 @@ See [`sql/migrations/README.md`](sql/migrations/README.md).
 
 See [`docs/FIRST_FORK.md`](docs/FIRST_FORK.md) and [`_contract/forking.md`](_contract/forking.md).
 
-Track lineage in `FOUNDRY_BASELINE.md` and pins in `_drift/dependency-exceptions.md`.
+Track lineage in `foundry.baseline.json` + `FOUNDRY_BASELINE.md` and pins in `_drift/dependency-exceptions.md`.
 
 ## Cursor workflow
 

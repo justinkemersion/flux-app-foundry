@@ -14,8 +14,12 @@ Fork `flux-app-foundry` into domain apps (Roommating, HOA Portal, Bookworm, etc.
 
 | File | Purpose |
 |------|---------|
-| `FOUNDRY_BASELINE.md` | Upstream commit, last sync, deviations |
+| `foundry.baseline.json` | Machine baseline version, commit, owned-path fingerprints |
+| `FOUNDRY_BASELINE.md` | Human sync log: upstream commit, last sync, deviations |
+| `AGENTS.md` | Non-negotiable AI/maintainer guardrails |
 | `_drift/dependency-exceptions.md` | Documented dependency pins only |
+
+Ownership and status meanings: [`docs/adr/001-baseline-ownership.md`](../docs/adr/001-baseline-ownership.md).
 
 ## Allowed changes in a fork
 
@@ -36,9 +40,12 @@ Fork `flux-app-foundry` into domain apps (Roommating, HOA Portal, Bookworm, etc.
 
 Periodically merge or cherry-pick from `flux-app-foundry`:
 
-1. Resolve conflicts favoring upstream for contracts, `lib/flux/`, CI, scripts
-2. Re-run `pnpm foundry:doctor` and `pnpm foundry:verify`
-3. Update `FOUNDRY_BASELINE.md` last-synced date and commit
+1. Resolve conflicts favoring upstream for Foundry-owned paths (contracts, `lib/flux/`, CI, Foundry scripts, security migrations, `foundry.baseline.json`, `AGENTS.md`)
+2. Run `pnpm foundry:status` (optionally `--reference` upstream manifest) — **detection only**; do not blind-overwrite app-owned files
+3. Re-run `pnpm foundry:doctor` and `pnpm foundry:verify`
+4. Update `FOUNDRY_BASELINE.md` last-synced date and commit
+
+Legacy forks without `foundry.baseline.json` report `unknown` until they adopt the manifest.
 
 ## Flux schema
 

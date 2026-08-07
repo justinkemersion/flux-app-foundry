@@ -19,10 +19,13 @@ function requireFile(rel: string, hint?: string) {
 }
 
 requireFile("FOUNDRY_BASELINE.md");
+requireFile("foundry.baseline.json");
+requireFile("AGENTS.md");
 requireFile("_drift/dependency-exceptions.md");
 requireFile("_contract/forking.md");
 requireFile("_contract/dependency-policy.md");
 requireFile("docs/FIRST_FORK.md");
+requireFile("docs/adr/001-baseline-ownership.md");
 
 const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as { name?: string };
 const isTemplate = pkg.name === "flux-app-foundry";

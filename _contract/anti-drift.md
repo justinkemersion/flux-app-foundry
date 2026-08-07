@@ -19,15 +19,23 @@
 Run on every PR:
 
 1. `pnpm install`
-2. `pnpm foundry:verify:template` — lint, typecheck, test, drift checks, fork check, build (CI stub env; no `.env` file)
+2. `pnpm foundry:verify:template` — lint, typecheck, test, drift checks, fork check, `foundry:status`, build (CI stub env; no `.env` file)
+3. `pnpm foundry:golden-app` — materialize a fresh tree and validate generated output + status fixtures
 
 Forks with configured `.env` should also pass `pnpm foundry:doctor` and `pnpm foundry:verify` before merge.
+
+## Baseline lifecycle
+
+- `foundry.baseline.json` — version + fingerprints for Foundry-owned paths
+- `pnpm foundry:status` — non-destructive drift report (`current` / `behind` / `locally_customized` / `missing_security` / `unknown`)
+- See `docs/adr/001-baseline-ownership.md` and `AGENTS.md`
 
 ## Vitest guards
 
 - No raw `fetch` under `lib/` except `lib/flux/client.ts`, and none under `app/`
 - Migrations contain RLS invariant and grants
 - Child-table policies enforce parent ownership where applicable
+- Centralized security invariants in `scripts/lib/security-invariants.ts` (also via `foundry:status`)
 
 ## Observability
 
