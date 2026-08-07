@@ -19,6 +19,10 @@ This repository **is** the upstream template.
 - Flux via PostgREST (`lib/flux/` boundary)
 - Vitest + ESLint + Prettier
 
+## Compatibility canary
+
+`_compat/reference-app` + `pnpm foundry:compat` prove supported baseline patterns still compose. Not production app code. After Foundry-owned changes, keep compat green alongside `foundry:verify:template` and `foundry:golden-app`.
+
 ## Local deviations
 
 _None — this is the template._

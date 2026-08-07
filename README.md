@@ -49,6 +49,7 @@ See [`sql/migrations/README.md`](sql/migrations/README.md).
 | `pnpm foundry:status` | Non-destructive baseline drift report (current/behind/customized/missing_security/unknown) |
 | `pnpm foundry:verify:template` | CI / fresh clone: lint, typecheck, test, drift, fork check, status, build — **no `.env`** |
 | `pnpm foundry:golden-app` | Materialize a temp app and validate generated output + status fixtures |
+| `pnpm foundry:compat` | Compatibility canary for supported baseline patterns (local; optional `FOUNDRY_COMPAT_LIVE=1`) |
 | `pnpm foundry:verify` | Full gate with your `.env`: run `foundry:doctor` first on forks |
 | `pnpm foundry:new-app-check` | Fork readiness (baseline manifest, contracts, flux hash) |
 | `pnpm foundry:baseline:stamp` | Maintainer: refresh fingerprints + source.commit (Foundry upstream only) |
@@ -67,7 +68,7 @@ Track lineage in `foundry.baseline.json` + `FOUNDRY_BASELINE.md` and pins in `_d
 1. Read `_contract/` (start with [`_contract/robust-workflow.md`](_contract/robust-workflow.md)) and the active `plans/NNN-*.md`
 2. Use `prompts/` templates for repeatable tasks
 3. **Deploy code via git only** — [`_contract/deploy.md`](_contract/deploy.md); no rsync/scp shims
-4. Template repo: `pnpm foundry:verify:template`. Fork with `.env`: `pnpm flux:doctor`, `pnpm foundry:doctor`, then `pnpm foundry:verify`
+4. Template repo: `pnpm foundry:verify:template`, `pnpm foundry:golden-app`, `pnpm foundry:compat`. Fork with `.env`: `pnpm flux:doctor`, `pnpm foundry:doctor`, then `pnpm foundry:verify`
 
 ## Philosophy
 
@@ -76,6 +77,7 @@ Essays in [`docs/philosophy/`](docs/philosophy/) describe the methodology (AI-as
 ## Repository layout
 
 - `_contract/` — enforceable laws (`robust-workflow.md`, `deploy.md`, `dependency-policy.md`, `forking.md`, …)
+- `_compat/` — compatibility reference harness (`reference-app` canary; not production UI)
 - `docs/generated/` — inventories from `foundry:report` (gitignored; see README there)
 - `_drift/` — fork exception log
 - `lib/config/` — typed env + Flux schema helpers

@@ -15,10 +15,11 @@ Concise non-negotiables for Cursor/AI maintenance of this repository and forks. 
 
 ## Baseline lifecycle
 
-6. **Distinguish Foundry-owned vs app-owned files.** Foundry-owned: `_contract/`, `lib/flux/`, Foundry/Flux scripts, CI workflows, security migrations, `foundry.baseline.json`, `AGENTS.md`. App-owned: domain routes, UI copy, `FOUNDRY_BASELINE.md` contents, dependency exceptions, new numbered migrations.
+6. **Distinguish Foundry-owned vs app-owned files.** Foundry-owned: `_contract/`, `_compat/`, `lib/flux/`, Foundry/Flux scripts, CI workflows, security migrations, `foundry.baseline.json`, `AGENTS.md`. App-owned: domain routes, UI copy, `FOUNDRY_BASELINE.md` contents, dependency exceptions, new numbered migrations.
 7. **Do not blind-overwrite app customizations.** Use `pnpm foundry:status` to detect drift; sync owned paths deliberately.
-8. **After baseline/template changes**, run `pnpm foundry:verify:template` and `pnpm foundry:golden-app`, and re-stamp with `pnpm foundry:baseline:stamp` when maintaining upstream Foundry.
+8. **After baseline/template or shared-contract changes**, run `pnpm foundry:verify:template`, `pnpm foundry:golden-app`, and `pnpm foundry:compat`, then re-stamp with `pnpm foundry:baseline:stamp` when maintaining upstream Foundry. The compatibility harness (`_compat/reference-app`) is the pattern canary — keep it green; do not confuse it with production `app/` code.
 
 ## Workflow
 
 9. Follow `plans/` incrementally. No deploy shims (`rsync`/`scp` of source trees). Finish with `pnpm check:drift` / `pnpm foundry:doctor` as appropriate.
+10. **Local vs live Flux checks:** `foundry:compat` (default) and template/golden gates run without Flux credentials. Live probes require `FOUNDRY_COMPAT_LIVE=1` plus safe test credentials — never embed secrets or fake doctor/compat failures.

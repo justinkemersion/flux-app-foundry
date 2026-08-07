@@ -34,3 +34,4 @@ run("pnpm build", TEMPLATE_BUILD_ENV);
 
 console.log("\nTemplate verify passed (no app .env required).");
 console.log("Note: golden generated-app acceptance is pnpm foundry:golden-app (CI).");
+console.log("Note: pattern compatibility canary is pnpm foundry:compat (CI).");
