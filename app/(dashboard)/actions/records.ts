@@ -18,6 +18,8 @@ const recordSchema = z.object({
   status: z.enum(["draft", "active", "archived"]).optional(),
 });
 
+const idSchema = z.string().uuid();
+
 export async function createRecordAction(
   input: z.infer<typeof recordSchema>,
 ): Promise<ActionResult<RecordRow>> {
@@ -43,8 +45,13 @@ export async function updateRecordAction(
 ): Promise<ActionResult<RecordRow>> {
   try {
     const sub = await requireSessionSub();
+    const recordId = idSchema.parse(id);
     const parsed = recordSchema.parse(input);
-    const row = await updateRecord(sub, id, parsed);
+    const patch =
+      parsed.status === "archived"
+        ? { ...parsed, archived_at: new Date().toISOString() }
+        : parsed;
+    const row = await updateRecord(sub, recordId, patch);
     await logActivity(sub, {
       entity_type: "record",
       entity_id: row.id,
@@ -59,7 +66,8 @@ export async function updateRecordAction(
 export async function archiveRecordAction(id: string): Promise<ActionResult<RecordRow>> {
   try {
     const sub = await requireSessionSub();
-    const row = await updateRecord(sub, id, {
+    const recordId = idSchema.parse(id);
+    const row = await updateRecord(sub, recordId, {
       status: "archived",
       archived_at: new Date().toISOString(),
     });
@@ -82,8 +90,9 @@ export async function addTagAction(
 ): Promise<ActionResult<RecordTagRow>> {
   try {
     const sub = await requireSessionSub();
+    const parentId = idSchema.parse(recordId);
     const { tag } = tagSchema.parse(input);
-    const row = await addTag(sub, recordId, tag);
+    const row = await addTag(sub, parentId, tag);
     await logActivity(sub, {
       entity_type: "record_tag",
       entity_id: row.id,
@@ -99,10 +108,11 @@ export async function addTagAction(
 export async function removeTagAction(tagId: string): Promise<ActionResult> {
   try {
     const sub = await requireSessionSub();
-    await removeTag(sub, tagId);
+    const id = idSchema.parse(tagId);
+    await removeTag(sub, id);
     await logActivity(sub, {
       entity_type: "record_tag",
-      entity_id: tagId,
+      entity_id: id,
       action: "untagged",
     });
     return { ok: true };

@@ -12,6 +12,8 @@ const noteSchema = z.object({
   record_id: z.string().uuid().optional(),
 });
 
+const idSchema = z.string().uuid();
+
 export async function createNoteAction(
   input: z.infer<typeof noteSchema>,
 ): Promise<ActionResult<NoteRow>> {
@@ -36,8 +38,9 @@ export async function updateNoteAction(
 ): Promise<ActionResult<NoteRow>> {
   try {
     const sub = await requireSessionSub();
+    const noteId = idSchema.parse(id);
     const parsed = noteSchema.parse({ body });
-    const row = await updateNote(sub, id, parsed.body);
+    const row = await updateNote(sub, noteId, parsed.body);
     await logActivity(sub, {
       entity_type: "note",
       entity_id: row.id,

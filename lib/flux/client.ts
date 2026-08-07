@@ -21,7 +21,7 @@ function fluxFetchOptions(): { dispatcher?: Agent } {
 }
 
 function baseUrl(): string {
-  const url = process.env.FLUX_URL ?? process.env.NEXT_PUBLIC_FLUX_URL;
+  const url = process.env.FLUX_URL?.trim();
   if (!url) {
     throw new Error("FLUX_URL is not set");
   }
