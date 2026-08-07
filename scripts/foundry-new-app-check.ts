@@ -33,7 +33,10 @@ if (!baseline.includes("Baseline commit")) {
 }
 
 if (!isTemplate) {
-  if (baseline.includes("N/A — source of truth")) {
+  if (
+    baseline.includes("N/A — source of truth") ||
+    baseline.includes("N/A (upstream source of truth)")
+  ) {
     failures.push("FOUNDRY_BASELINE.md still has template upstream text — fill in baseline commit and deviations");
   }
 } else {

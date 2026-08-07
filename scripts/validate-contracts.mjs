@@ -16,15 +16,19 @@ const REQUIRED_FILES = [
   "route-rules.md",
   "dependency-policy.md",
   "forking.md",
+  "deploy.md",
+  "robust-workflow.md",
 ];
 
 const REQUIRED_HEADINGS = {
-  "database.md": ["## RLS invariant"],
+  "database.md": ["## RLS invariant", "## Child-table ownership"],
   "flux.md": ["## HTTP boundary"],
   "flux-workflow.md": ["## Setup order", "## v2_shared JWT bridge invariant"],
   "anti-drift.md": ["## CI gates"],
   "dependency-policy.md": ["## Source of truth", "## Forbidden"],
   "forking.md": ["## Forbidden"],
+  "deploy.md": ["## Non-negotiable", "## Forbidden without written excuse"],
+  "robust-workflow.md": ["## Non-negotiable boundaries", "## No shims (explicit)"],
 };
 
 const MIN_LINES = 20;

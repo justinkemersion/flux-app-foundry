@@ -6,8 +6,9 @@ Fork `flux-app-foundry` into domain apps (Roommating, HOA Portal, Bookworm, etc.
 
 ## Before you fork
 
-1. Run `pnpm foundry:doctor` on a clean upstream clone.
-2. Read `_contract/dependency-policy.md` and `docs/FIRST_FORK.md`.
+1. On a clean upstream clone (no `.env` required): `pnpm foundry:verify:template`.
+2. After copying `.env` and linking Flux: `pnpm foundry:doctor`.
+3. Read `_contract/dependency-policy.md` and `docs/FIRST_FORK.md`.
 
 ## Required fork files
 

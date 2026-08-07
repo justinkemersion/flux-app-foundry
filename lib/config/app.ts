@@ -31,5 +31,5 @@ export function getAppDisplayName(root = process.cwd()): string {
 export function getAppTagline(): string {
   const override = process.env.NEXT_PUBLIC_APP_TAGLINE?.trim();
   if (override) return override;
-  return "Flux-first workspaces and records with contract-driven anti-drift.";
+  return "Flux-first records with contract-driven anti-drift.";
 }

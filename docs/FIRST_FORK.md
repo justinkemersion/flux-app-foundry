@@ -75,8 +75,8 @@ pnpm foundry:verify
 
 ## 6. Domain work
 
-- Add plans under `plans/` (e.g. `007-room-expenses.md`)
-- Add SQL as `0006_*.sql` + grants file — never rewrite `0001`–`0005`
+- Add plans under `plans/` (e.g. `009-roommating-first-domain.md` or `NNN-your-domain.md`)
+- Add SQL as new numbered files (e.g. `0007_*.sql` + grants) — never rewrite applied upstream migrations
 - Add routes under `app/(dashboard)/`
 - Read `_contract/forking.md` before large changes
 

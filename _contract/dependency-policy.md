@@ -25,7 +25,7 @@ Each exception needs: package name, pinned version, reason, owner, and review da
 | `pnpm deps:check` | List outdated packages |
 | `pnpm deps:audit` | Security audit |
 | `pnpm deps:update:minor` | Interactive update session (local only) |
-| `pnpm foundry:verify` | Lint, typecheck, build — no product behavior change expected |
+| `pnpm foundry:verify` | Lint, typecheck, test, drift checks, build — no product behavior change expected |
 
 ## Forbidden
 
