@@ -5,7 +5,7 @@
   "name": "flux-app-foundry",
   "source": {
     "repository": "https://github.com/justinkemersion/flux-app-foundry",
-    "commit": "6ea2bbaaeb0a465fcabd2502dc58d6733d49b868",
+    "commit": "81850b4cee9740d009235222df238ef952298df8",
     "ref": "main"
   },
   "fluxSurface": {
