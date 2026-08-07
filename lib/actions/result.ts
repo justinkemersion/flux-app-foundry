@@ -1,5 +1,5 @@
 import { ZodError } from "zod";
-import { UnauthorizedError } from "@/lib/flux/auth";
+import { UnauthorizedError } from "@/lib/flux/errors";
 import { FluxHttpError } from "@/lib/flux/client";
 
 export type ActionResult<T = void> =

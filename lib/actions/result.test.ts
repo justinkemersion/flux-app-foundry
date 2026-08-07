@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { ZodError } from "zod";
-import { UnauthorizedError } from "@/lib/flux/auth";
+import { UnauthorizedError } from "@/lib/flux/errors";
 import { FluxHttpError } from "@/lib/flux/client";
 import { actionError } from "./result";
 
