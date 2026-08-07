@@ -12,6 +12,12 @@ Every tenant-scoped table must use this predicate on all policies:
 (current_setting('request.jwt.claims', true)::json->>'sub') = user_id
 ```
 
+## Child-table ownership
+
+Tables that reference a parent row (`record_id` → `records`, etc.) must also ensure the JWT `sub` owns that parent. Matching `user_id` alone is not enough: an attacker who knows another tenant’s UUID must not be able to attach child rows.
+
+Prefer an `EXISTS` check against the parent table with the same `sub` predicate (see `0006_child_record_ownership.sql`).
+
 ## Policies
 
 Each table needs SELECT, INSERT, UPDATE, DELETE policies for role `authenticated` unless documented otherwise.

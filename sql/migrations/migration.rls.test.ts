@@ -47,3 +47,16 @@ describe("SQL hygiene", () => {
     }
   });
 });
+
+describe("child-table parent ownership", () => {
+  it("0006 requires records ownership for notes and record_tags", () => {
+    const sql = readFileSync(join(dir, "0006_child_record_ownership.sql"), "utf8");
+    expect(sql).toContain("exists (");
+    expect(sql).toContain("from records r");
+    expect(sql).toContain("r.id = record_id");
+    expect(sql.toLowerCase()).toContain("drop policy if exists record_tags_insert");
+    expect(sql.toLowerCase()).toContain("drop policy if exists notes_insert");
+    const matches = sql.split(INVARIANT).length - 1;
+    expect(matches).toBeGreaterThanOrEqual(4);
+  });
+});

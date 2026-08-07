@@ -24,6 +24,7 @@ Do **not** run `flux push sql/migrations/0001_foo.sql` without `--mode versioned
 2. `0002_profiles_grants.sql`
 3. `0004_core_entities.sql`
 4. `0005_core_grants.sql`
+5. `0006_child_record_ownership.sql`
 
 ## PostgREST profile
 
@@ -33,7 +34,7 @@ After `flux init` / `flux push`:
 pnpm flux:schema:sync
 ```
 
-This writes `FLUX_POSTGREST_SCHEMA` into `.env.local` from `flux.json` (never hand-edit SQL for schema names).
+This writes `FLUX_POSTGREST_SCHEMA` into `.env.local` from the Flux control-plane `apiSchema` when available, with a hash-derived fallback from `flux.json` (never hand-edit SQL for schema names).
 
 ## Rules
 

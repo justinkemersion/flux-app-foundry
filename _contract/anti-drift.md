@@ -25,8 +25,9 @@ Forks with configured `.env` should also pass `pnpm foundry:doctor` and `pnpm fo
 
 ## Vitest guards
 
-- No raw `fetch` under `lib/` except `lib/flux/client.ts`
+- No raw `fetch` under `lib/` except `lib/flux/client.ts`, and none under `app/`
 - Migrations contain RLS invariant and grants
+- Child-table policies enforce parent ownership where applicable
 
 ## Observability
 
