@@ -5,7 +5,7 @@
   "name": "flux-app-foundry",
   "source": {
     "repository": "https://github.com/justinkemersion/flux-app-foundry",
-    "commit": "4d27f83d48c2e0781b2b8a1a678b19103b022850",
+    "commit": "6ea2bbaaeb0a465fcabd2502dc58d6733d49b868",
     "ref": "main"
   },
   "fluxSurface": {
@@ -96,7 +96,7 @@
     "_compat/README.md": "0288a4575be712bf0dfa0a6b4f298de6909df9284313b9eee84b539606cc03ec",
     "_compat/reference-app/PURPOSE.md": "fc3661c5d1301663d1c1d5d8f71f49752ddf262ec8fc9dac19b6f4c7b7d17d0d",
     "_compat/reference-app/domain/actions.ts": "e79422abf721c516a65c9c3b47e7e973b6932497695974f51e964fce6d4247ed",
-    "_compat/reference-app/domain/archive.ts": "13c390513940811ac1e7c0dc6c39257d8ea9aed60a79a26da54103c873d6c057",
+    "_compat/reference-app/domain/archive.ts": "1e6a8fcb85b4e258a8e0c4628899dd3b4dd30dfe6900b2390e6a78f278bce6a9",
     "_compat/reference-app/domain/ownership.ts": "ccb215f56c8dee69ed10b03741e9f4280a62d1e6011a1004dde6b83c80824d63",
     "_compat/reference-app/domain/public-routes.ts": "00f35785f3dd27edd3a1c9163b6fd02586519c37b64dcecd025a7d51af327111",
     "_compat/reference-app/domain/session.ts": "fc5e06242ba196f7d2bbe51546a16fd8b37c2d8bfeabed9018e876112ef717d7",

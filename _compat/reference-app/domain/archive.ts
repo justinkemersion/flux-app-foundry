@@ -19,6 +19,7 @@ export function archiveRecord(
 
 /** Unarchive returns to active and clears archived_at (via update, not a dedicated action). */
 export function unarchiveRecord(row: Archiveable): Archiveable {
+  void row;
   return { status: "active", archived_at: null };
 }
 
