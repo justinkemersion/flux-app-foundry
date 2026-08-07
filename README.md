@@ -2,9 +2,9 @@
 
 A disciplined Flux-first CRUDe application system for contract-driven, anti-drift development with Cursor.
 
-**Status:** 0.1 foundation · 0.2 repeatable setup · 0.3 observable architecture · 0.4 fork-proven · **0.5 baseline lifecycle**.
+**Status:** 0.1 foundation · 0.2 repeatable setup · 0.3 observable architecture · 0.4 fork-proven · 0.5 baseline lifecycle · **0.6 reference compatibility harness**.
 
-Machine baseline: [`foundry.baseline.json`](foundry.baseline.json) · ownership: [`docs/adr/001-baseline-ownership.md`](docs/adr/001-baseline-ownership.md) · agents: [`AGENTS.md`](AGENTS.md).
+Machine baseline: [`foundry.baseline.json`](foundry.baseline.json) · ownership: [`docs/adr/001-baseline-ownership.md`](docs/adr/001-baseline-ownership.md) · agents: [`AGENTS.md`](AGENTS.md) · reference: [`docs/REFERENCE_APP.md`](docs/REFERENCE_APP.md) · baseline notes: [`docs/BASELINE_CHANGELOG.md`](docs/BASELINE_CHANGELOG.md).
 
 ## Stack
 
@@ -49,6 +49,8 @@ See [`sql/migrations/README.md`](sql/migrations/README.md).
 | `pnpm foundry:status` | Non-destructive baseline drift report (current/behind/customized/missing_security/unknown) |
 | `pnpm foundry:verify:template` | CI / fresh clone: lint, typecheck, test, drift, fork check, status, build — **no `.env`** |
 | `pnpm foundry:golden-app` | Materialize a temp app and validate generated output + status fixtures |
+| `pnpm foundry:compat` | Canonical reference-app compatibility harness (local; `--live` opt-in) |
+| `pnpm foundry:reference:verify` | Alias for `foundry:compat` |
 | `pnpm foundry:verify` | Full gate with your `.env`: run `foundry:doctor` first on forks |
 | `pnpm foundry:new-app-check` | Fork readiness (baseline manifest, contracts, flux hash) |
 | `pnpm foundry:baseline:stamp` | Maintainer: refresh fingerprints + source.commit (Foundry upstream only) |
@@ -76,6 +78,7 @@ Essays in [`docs/philosophy/`](docs/philosophy/) describe the methodology (AI-as
 ## Repository layout
 
 - `_contract/` — enforceable laws (`robust-workflow.md`, `deploy.md`, `dependency-policy.md`, `forking.md`, …)
+- `fixtures/reference-app/` — canonical compatibility canary (not a second product app)
 - `docs/generated/` — inventories from `foundry:report` (gitignored; see README there)
 - `_drift/` — fork exception log
 - `lib/config/` — typed env + Flux schema helpers

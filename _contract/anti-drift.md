@@ -21,6 +21,7 @@ Run on every PR:
 1. `pnpm install`
 2. `pnpm foundry:verify:template` — lint, typecheck, test, drift checks, fork check, `foundry:status`, build (CI stub env; no `.env` file)
 3. `pnpm foundry:golden-app` — materialize a fresh tree and validate generated output + status fixtures
+4. `pnpm foundry:compat` — canonical reference-app compatibility harness (local/deterministic; live probes opt-in)
 
 Forks with configured `.env` should also pass `pnpm foundry:doctor` and `pnpm foundry:verify` before merge.
 
@@ -28,6 +29,8 @@ Forks with configured `.env` should also pass `pnpm foundry:doctor` and `pnpm fo
 
 - `foundry.baseline.json` — version + fingerprints for Foundry-owned paths
 - `pnpm foundry:status` — non-destructive drift report (`current` / `behind` / `locally_customized` / `missing_security` / `unknown`)
+- `fixtures/reference-app/` + `pnpm foundry:compat` — compatibility canary for Foundry-supported patterns
+- Baseline release notes: `docs/BASELINE_CHANGELOG.md`
 - See `docs/adr/001-baseline-ownership.md` and `AGENTS.md`
 
 ## Vitest guards

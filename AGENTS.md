@@ -17,8 +17,12 @@ Concise non-negotiables for Cursor/AI maintenance of this repository and forks. 
 
 6. **Distinguish Foundry-owned vs app-owned files.** Foundry-owned: `_contract/`, `lib/flux/`, Foundry/Flux scripts, CI workflows, security migrations, `foundry.baseline.json`, `AGENTS.md`. App-owned: domain routes, UI copy, `FOUNDRY_BASELINE.md` contents, dependency exceptions, new numbered migrations.
 7. **Do not blind-overwrite app customizations.** Use `pnpm foundry:status` to detect drift; sync owned paths deliberately.
-8. **After baseline/template changes**, run `pnpm foundry:verify:template` and `pnpm foundry:golden-app`, and re-stamp with `pnpm foundry:baseline:stamp` when maintaining upstream Foundry.
+8. **After baseline/template changes**, run `pnpm foundry:verify:template`, `pnpm foundry:golden-app`, and `pnpm foundry:compat`, and re-stamp with `pnpm foundry:baseline:stamp` when maintaining upstream Foundry. Record baseline bumps in `docs/BASELINE_CHANGELOG.md`.
+
+## Reference compatibility
+
+9. **Keep the canonical reference harness honest.** `fixtures/reference-app/` + `pnpm foundry:compat` prove Foundry-supported patterns offline. Mark Flux-core/live gaps as pending — never shim or fake gateway/JWT/schema-rewrite success.
 
 ## Workflow
 
-9. Follow `plans/` incrementally. No deploy shims (`rsync`/`scp` of source trees). Finish with `pnpm check:drift` / `pnpm foundry:doctor` as appropriate.
+10. Follow `plans/` incrementally. No deploy shims (`rsync`/`scp` of source trees). Finish with `pnpm check:drift` / `pnpm foundry:doctor` as appropriate.

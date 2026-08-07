@@ -86,6 +86,7 @@ try {
   run("pnpm test", appDir);
   run("pnpm foundry:new-app-check", appDir);
   run("pnpm foundry:status", appDir);
+  run("pnpm foundry:compat", appDir);
   run("pnpm build", appDir, TEMPLATE_BUILD_ENV);
 
   // Stale/missing/security fixtures — status only (no install); non-destructive to source.

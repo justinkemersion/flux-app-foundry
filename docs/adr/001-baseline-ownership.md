@@ -13,7 +13,7 @@ Foundry is forked into domain apps. Without an explicit ownership and version mo
 1. **Canonical machine manifest:** `foundry.baseline.json` records `baselineVersion`, source commit, required scripts/paths, security baseline migrations/invariants, and content fingerprints of Foundry-owned paths.
 2. **Human companion:** `FOUNDRY_BASELINE.md` remains the fork-facing sync log (commit, last synced, deviations).
 3. **Ownership split**
-   - **Foundry-owned:** `_contract/`, `lib/flux/`, Foundry/Flux/check scripts, CI workflows, security migrations through `0006_*`, `foundry.baseline.json`, `AGENTS.md`, baseline ADR.
+   - **Foundry-owned:** `_contract/`, `lib/flux/`, Foundry/Flux/check scripts, CI workflows, security migrations through `0006_*`, `foundry.baseline.json`, `AGENTS.md`, baseline ADR, `fixtures/reference-app/`, `docs/REFERENCE_APP.md`, `docs/BASELINE_CHANGELOG.md`.
    - **App-owned:** `app/` domain UI, branding, `FOUNDRY_BASELINE.md` content, `_drift/dependency-exceptions.md`, plans after the foundation set, new numbered migrations (`0007+`).
 4. **Detection over mutation:** `pnpm foundry:status` reports `current` | `behind` | `locally_customized` | `missing_security` | `unknown`. No automatic overwrite upgrade in this lifecycle.
 5. **Legacy forks:** Missing `foundry.baseline.json` ⇒ `unknown` (not a hard break of the app). Remediation is to adopt the manifest from upstream.
@@ -36,6 +36,7 @@ Critical infra deps follow `_contract/dependency-policy.md`: patches anytime, mi
 
 ## Consequences
 
-- CI validates the template and a materialized golden app.
+- CI validates the template, a materialized golden app, and the reference compatibility harness.
 - Doctors report baseline/security locally without Flux credentials.
 - Agents must follow `AGENTS.md` and must not weaken RLS or fake doctor results.
+- Baseline version bumps carry concise fork-facing notes in `docs/BASELINE_CHANGELOG.md`.

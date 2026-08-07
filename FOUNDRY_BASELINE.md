@@ -23,9 +23,19 @@ This repository **is** the upstream template.
 
 _None — this is the template._
 
+## Release notes
+
+Baseline version bumps are summarized in [`docs/BASELINE_CHANGELOG.md`](docs/BASELINE_CHANGELOG.md).
+
+## Reference compatibility
+
+The template app is the canonical reference subject. Verify with `pnpm foundry:compat` (see [`docs/REFERENCE_APP.md`](docs/REFERENCE_APP.md)).
+
 ## Forks
 
 1. Copy/update `foundry.baseline.json` when syncing from upstream (do not re-stamp casually).
 2. Fill this file with upstream commit, last synced date, and deviations.
 3. Run `pnpm foundry:status` (and optionally `--reference path/to/upstream/foundry.baseline.json`).
-4. Ownership model: `docs/adr/001-baseline-ownership.md` and `AGENTS.md`.
+4. Run `pnpm foundry:compat` after syncing Foundry-owned paths.
+5. Ownership model: `docs/adr/001-baseline-ownership.md` and `AGENTS.md`.
+6. Read `docs/BASELINE_CHANGELOG.md` for each skipped baseline version.
