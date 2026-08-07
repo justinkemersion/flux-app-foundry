@@ -17,7 +17,7 @@ Evolve Foundry from a starter skeleton into a maintained baseline/SDK: versioned
 - [x] Add `pnpm foundry:golden-app` + CI step
 - [x] Add `AGENTS.md` + ADR for ownership/lifecycle
 - [x] Cross-link dependency policy / forking / FOUNDRY_BASELINE.md
-- [ ] Validate: verify:template, status (tree + fixtures), golden-app
+- [x] Validate: verify:template, status (tree + fixtures), golden-app
 
 ## Out of scope
 
