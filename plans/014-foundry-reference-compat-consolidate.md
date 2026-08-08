@@ -21,8 +21,8 @@ Resolve the PR #4 (`fixtures/reference-app`) vs PR #5 (`_compat/reference-app`) 
 - [x] Keep one command surface / CI path / docs set
 - [x] Port PR #5 domain + negatives into `fixtures/reference-app/`
 - [x] Ensure no stale `_compat` / duplicate framework
-- [ ] Validate verify:template, golden-app, foundry:compat, negatives
-- [ ] Stamp baseline fingerprints after landing
+- [x] Validate verify:template, golden-app, foundry:compat, negatives
+- [x] Stamp baseline fingerprints after landing
 
 ## Out of scope
 
