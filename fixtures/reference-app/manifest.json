@@ -7,10 +7,17 @@
   "baselineVersion": "0.6.0",
   "docs": [
     "fixtures/reference-app/README.md",
+    "fixtures/reference-app/patterns.json",
     "docs/REFERENCE_APP.md",
     "docs/BASELINE_CHANGELOG.md"
   ],
   "capabilities": [
+    {
+      "id": "pattern-anchors",
+      "mode": "local",
+      "category": "canary",
+      "summary": "Reference fixture layout, domain canaries, negative fixtures, and template pattern anchors exist."
+    },
     {
       "id": "auth-fail-closed",
       "mode": "local",

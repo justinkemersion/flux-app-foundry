@@ -9,6 +9,8 @@
  * Local checks are deterministic and run offline/CI.
  * Live Flux probes are opt-in and never invent Flux-core success.
  */
+import { execSync } from "node:child_process";
+import { join } from "node:path";
 import { runReferenceCompat } from "./lib/reference-compat";
 
 async function main() {
@@ -56,7 +58,25 @@ async function main() {
     );
   }
 
-  process.exit(report.status === "pass" ? 0 : 1);
+  if (report.status !== "pass") {
+    process.exit(1);
+  }
+
+  // Domain + negative canary Vitests (keep foundry:compat self-contained).
+  const vitestTargets = [
+    join("lib", "foundry", "reference-compat.test.ts"),
+    join("lib", "foundry", "reference-domain.test.ts"),
+    join("lib", "foundry", "reference-negative.test.ts"),
+    join("lib", "foundry", "reference-patterns.test.ts"),
+  ].join(" ");
+  console.log(`\n→ pnpm exec vitest run ${vitestTargets}\n`);
+  execSync(`pnpm exec vitest run ${vitestTargets} --reporter=dot`, {
+    cwd: root,
+    stdio: "inherit",
+    env: process.env,
+  });
+
+  process.exit(0);
 }
 
 main().catch((err) => {

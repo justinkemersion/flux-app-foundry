@@ -13,12 +13,13 @@ Foundry is forked into domain apps. Without an explicit ownership and version mo
 1. **Canonical machine manifest:** `foundry.baseline.json` records `baselineVersion`, source commit, required scripts/paths, security baseline migrations/invariants, and content fingerprints of Foundry-owned paths.
 2. **Human companion:** `FOUNDRY_BASELINE.md` remains the fork-facing sync log (commit, last synced, deviations).
 3. **Ownership split**
-   - **Foundry-owned:** `_contract/`, `lib/flux/`, Foundry/Flux/check scripts, CI workflows, security migrations through `0006_*`, `foundry.baseline.json`, `AGENTS.md`, baseline ADR, `fixtures/reference-app/`, `docs/REFERENCE_APP.md`, `docs/BASELINE_CHANGELOG.md`.
+   - **Foundry-owned:** `_contract/`, `lib/flux/`, Foundry/Flux/check scripts, CI workflows, security migrations through `0006_*`, `foundry.baseline.json`, `AGENTS.md`, baseline ADR, `fixtures/reference-app/` (sole compatibility canary — not `_compat/`), `docs/REFERENCE_APP.md`, `docs/BASELINE_CHANGELOG.md`.
    - **App-owned:** `app/` domain UI, branding, `FOUNDRY_BASELINE.md` content, `_drift/dependency-exceptions.md`, plans after the foundation set, new numbered migrations (`0007+`).
 4. **Detection over mutation:** `pnpm foundry:status` reports `current` | `behind` | `locally_customized` | `missing_security` | `unknown`. No automatic overwrite upgrade in this lifecycle.
 5. **Legacy forks:** Missing `foundry.baseline.json` ⇒ `unknown` (not a hard break of the app). Remediation is to adopt the manifest from upstream.
 6. **Flux surface:** Foundry references `_contract/flux.md` + `_contract/flux-workflow.md` rather than inventing a Flux-core API version.
 7. **Propagation:** Security/migration fixes ship as new Foundry commits; apps sync owned paths, re-run doctor/verify, update their baseline metadata.
+8. **Compatibility canary:** `fixtures/reference-app` + `pnpm foundry:compat` complements `foundry:golden-app` and must stay green after Foundry-owned changes.
 
 ## Status meanings
 

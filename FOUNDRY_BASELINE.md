@@ -29,7 +29,7 @@ Baseline version bumps are summarized in [`docs/BASELINE_CHANGELOG.md`](docs/BAS
 
 ## Reference compatibility
 
-The template app is the canonical reference subject. Verify with `pnpm foundry:compat` (see [`docs/REFERENCE_APP.md`](docs/REFERENCE_APP.md)).
+The template app is the canonical reference subject. The sole canary is `fixtures/reference-app/` via `pnpm foundry:compat` (see [`docs/REFERENCE_APP.md`](docs/REFERENCE_APP.md)). Do not add a parallel `_compat/` harness.
 
 ## Forks
 

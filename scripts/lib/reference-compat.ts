@@ -14,6 +14,10 @@ import {
   probeAuthenticatedBridge,
   probeUnauthenticatedProfiles,
 } from "./flux-probes";
+import {
+  assertReferenceFixtureLayout,
+  assertReferencePatternAnchors,
+} from "./reference-patterns";
 
 export const REFERENCE_FIXTURE_DIR = "fixtures/reference-app";
 export const REFERENCE_MANIFEST_FILE = "manifest.json";
@@ -309,6 +313,22 @@ function checkBaselineDrift(
   };
 }
 
+function checkPatternAnchors(root: string): CompatCheckResult {
+  const missingLayout = assertReferenceFixtureLayout(root);
+  const missingAnchors = assertReferencePatternAnchors(root);
+  const missing = [...missingLayout, ...missingAnchors];
+  return {
+    id: "pattern-anchors",
+    mode: "local",
+    category: "canary",
+    outcome: missing.length === 0 ? "pass" : "fail",
+    detail:
+      missing.length === 0
+        ? "reference fixture layout + pattern anchors present"
+        : missing.join("; "),
+  };
+}
+
 const localCheckers: Record<
   string,
   (root: string, manifest: ReferenceManifest) => CompatCheckResult
@@ -323,6 +343,7 @@ const localCheckers: Record<
   "migrations-security-baseline": (root) => checkMigrationsSecurity(root),
   "env-config-behavior": (root) => checkEnvConfig(root),
   "no-browser-flux-credentials": (root) => checkNoBrowserSecrets(root),
+  "pattern-anchors": (root) => checkPatternAnchors(root),
   "baseline-drift-detection": (root, manifest) =>
     checkBaselineDrift(root, manifest),
 };

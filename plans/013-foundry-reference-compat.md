@@ -26,3 +26,7 @@ Add a canonical, intentionally boring reference app/fixture that acts as a durab
 - Deploy / mutate live infrastructure
 - Inventing Flux-core JWT bridge / unauth gateway / schema-rewrite success
 - Second production UI or duplicate app framework
+
+## Follow-up
+
+Plan `014-foundry-reference-compat-consolidate.md` merges PR #5's domain/negative/pattern-anchor strengths into this layout and rejects `_compat/reference-app` as a parallel framework.

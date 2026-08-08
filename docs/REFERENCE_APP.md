@@ -7,16 +7,17 @@ The Foundry template **is** the canonical reference application.
 
 | Capability | How it is checked |
 |------------|-------------------|
-| Authenticated flow + fail-closed unauth | Dashboard layout redirect + `requireSessionSub` |
+| Pattern anchors + fixture layout | `patterns.json` + `domain/` + `negative/` present; anchors resolve |
+| Authenticated flow + fail-closed unauth | Dashboard layout redirect + `requireSessionSub` (+ domain canary) |
 | Public vs protected data/routes | `/`, `/login` public; `(dashboard)/**` protected |
 | Tenant / user isolation | RLS `jwt.sub = user_id` security invariant |
-| Parent / child ownership | `0006_child_record_ownership.sql` for notes + tags |
+| Parent / child ownership (+ tags) | `0006_child_record_ownership.sql` + ownership domain negatives |
 | Create / read / update / archive | Server actions + `archived_at` soft-archive convention |
 | Server actions / API patterns | `"use server"` + `lib/flux`; only Auth.js API route |
 | Validation + safe errors | Zod + `actionError` sanitization |
 | Migrations + security baseline | Centralized `runSecurityInvariants` |
 | Env / config hygiene | `.env.example` secrets; no `NEXT_PUBLIC_FLUX_*` |
-| No browser Flux credentials / raw fetches | Security invariants |
+| No browser Flux credentials / raw fetches | Security invariants + negative browser fixture |
 | Baseline / drift vs reference | `foundry:status` current + fixture `baselineVersion` match |
 
 ## Deferred / live (Flux core or credentials)
@@ -33,7 +34,7 @@ These are encoded in `fixtures/reference-app/manifest.json` so CI stays honest o
 ## Commands
 
 ```bash
-pnpm foundry:compat              # local deterministic harness
+pnpm foundry:compat              # local deterministic harness + canary Vitest
 pnpm foundry:reference:verify    # alias
 pnpm foundry:compat --live       # + live probes when env is configured
 pnpm foundry:compat --json
@@ -41,7 +42,7 @@ pnpm foundry:compat --json
 
 Also covered indirectly by:
 
-- `pnpm test` — Vitest suite includes `lib/foundry/reference-compat.test.ts`
+- `pnpm test` — Vitest suite includes `lib/foundry/reference-*.test.ts`
 - `pnpm foundry:verify:template` — runs tests + `foundry:status`
 - `pnpm foundry:golden-app` — materializes a fresh tree and runs `foundry:compat`
 
@@ -49,3 +50,7 @@ Also covered indirectly by:
 
 See `fixtures/reference-app/README.md` and `docs/adr/001-baseline-ownership.md`.  
 Release notes for baseline bumps: `docs/BASELINE_CHANGELOG.md`.
+
+## Consolidation note
+
+Alternate layout `_compat/reference-app` (PR #5) was rejected in favor of this single `fixtures/reference-app` ownership model. Domain canaries, pattern anchors, and negative fixtures from that design were merged here.

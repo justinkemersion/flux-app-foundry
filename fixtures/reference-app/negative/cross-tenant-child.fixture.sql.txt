@@ -1,0 +1,7 @@
+-- NEGATIVE FIXTURE — not applied as a migration.
+-- Deliberate anti-pattern: child policy checks only user_id, not parent ownership.
+-- A caller who knows another tenant's record UUID could attach tags/notes.
+
+create policy notes_insert_insecure on notes for insert to authenticated with check (
+  (current_setting('request.jwt.claims', true)::json->>'sub') = user_id
+);

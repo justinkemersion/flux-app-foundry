@@ -1,0 +1,9 @@
+// NEGATIVE FIXTURE — not executed as app code.
+// Deliberate anti-pattern: browser/client module calling Flux with a public env var.
+"use client";
+
+const url = process.env.NEXT_PUBLIC_FLUX_URL;
+
+export async function badBrowserFluxCall() {
+  return fetch(`${url}/records`);
+}

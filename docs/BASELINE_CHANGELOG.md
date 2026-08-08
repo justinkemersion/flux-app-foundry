@@ -7,21 +7,26 @@ Forks: read the entry for each skipped version and apply the listed sync steps.
 
 ## 0.6.0 — 2026-08-07
 
-**Theme:** Canonical reference app / compatibility harness.
+**Theme:** Canonical reference app / compatibility harness (consolidated).
 
 ### Downstream forks must
 
-1. Pull Foundry-owned paths (especially `fixtures/reference-app/`, `scripts/foundry-compat.ts`, `scripts/lib/reference-compat.ts`, CI workflow, security invariants already on 0.5.x).
+1. Pull Foundry-owned paths (especially `fixtures/reference-app/`, `scripts/foundry-compat.ts`, `scripts/lib/reference-*.ts`, CI workflow, security invariants already on 0.5.x).
 2. Run `pnpm foundry:compat` (and keep `pnpm foundry:verify:template` / `pnpm foundry:golden-app` green).
 3. Update fork `foundry.baseline.json` / `FOUNDRY_BASELINE.md` sync metadata — do not re-stamp casually.
 4. Treat Flux-core live items (`live-jwt-bridging-semantics`, `live-unauth-gateway-contract`, `live-schema-rewrite-v2`) as pending unless your environment explicitly runs `--live` probes.
+5. Do **not** adopt a parallel `_compat/reference-app` tree — that alternate layout was discarded; the only canary is `fixtures/reference-app/`.
 
 ### Added
 
-- `fixtures/reference-app/` capability manifest + ownership docs
+- `fixtures/reference-app/` capability manifest + pattern anchors + domain canaries + negative fixtures
 - `pnpm foundry:compat` / `foundry:reference:verify`
-- CI step for the reference harness
+- CI step for the reference harness (after `foundry:golden-app`)
 - This changelog convention
+
+### Why 0.6.0
+
+Introduces a new Foundry-owned compatibility surface and required scripts/paths. Forks syncing past 0.5.x must pull the harness and keep `foundry:compat` green.
 
 ## 0.5.0 — 2026-08-07
 

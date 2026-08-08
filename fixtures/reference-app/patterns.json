@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "name": "foundry-reference-pattern-anchors",
+  "role": "compatibility-canary",
+  "notProduction": true,
+  "baselineVersion": "0.6.0",
+  "mediaUpload": "deferred — no canonical baseline pattern",
+  "patterns": [
+    {
+      "id": "session-boundary",
+      "description": "Authenticated user/session boundary via requireSessionSub",
+      "anchors": [
+        "lib/flux/auth.ts",
+        "auth.ts",
+        "app/(dashboard)/layout.tsx"
+      ]
+    },
+    {
+      "id": "tenant-isolation",
+      "description": "Tenant/user isolation via RLS jwt.sub = user_id",
+      "anchors": [
+        "sql/migrations/0001_profiles.sql",
+        "sql/migrations/0004_core_entities.sql",
+        "sql/migrations/0006_child_record_ownership.sql"
+      ]
+    },
+    {
+      "id": "parent-child-ownership",
+      "description": "Parent + child records with parent-ownership enforcement",
+      "anchors": [
+        "sql/migrations/0006_child_record_ownership.sql",
+        "lib/flux/notes.ts",
+        "app/(dashboard)/actions/notes.ts"
+      ]
+    },
+    {
+      "id": "tags-child-relation",
+      "description": "Tags as child/many-to-many relation on records",
+      "anchors": [
+        "sql/migrations/0004_core_entities.sql",
+        "lib/flux/records.ts",
+        "app/(dashboard)/actions/records.ts"
+      ]
+    },
+    {
+      "id": "protected-mutations",
+      "description": "Protected server actions with sanitized errors",
+      "anchors": [
+        "app/(dashboard)/actions/records.ts",
+        "app/(dashboard)/actions/notes.ts",
+        "lib/actions/result.ts"
+      ]
+    },
+    {
+      "id": "public-vs-private",
+      "description": "Explicit public routes vs authenticated dashboard",
+      "anchors": [
+        "app/(dashboard)/layout.tsx",
+        "middleware.ts",
+        "app/page.tsx",
+        "app/login/page.tsx"
+      ],
+      "note": "Baseline has no public entity/sharing RLS — only marketing/login public routes"
+    },
+    {
+      "id": "archive-lifecycle",
+      "description": "Archive sets status+archived_at; unarchive via status update",
+      "anchors": [
+        "app/(dashboard)/actions/records.ts",
+        "lib/flux/records.ts",
+        "sql/migrations/0004_core_entities.sql"
+      ]
+    },
+    {
+      "id": "validation-errors",
+      "description": "Zod validation + actionError fail-closed sanitization",
+      "anchors": [
+        "lib/actions/result.ts",
+        "app/(dashboard)/actions/records.ts"
+      ]
+    },
+    {
+      "id": "migrations-rls",
+      "description": "Versioned migrations and RLS contracts",
+      "anchors": [
+        "sql/migrations/0001_profiles.sql",
+        "sql/migrations/0002_profiles_grants.sql",
+        "sql/migrations/0004_core_entities.sql",
+        "sql/migrations/0005_core_grants.sql",
+        "sql/migrations/0006_child_record_ownership.sql"
+      ]
+    },
+    {
+      "id": "server-only-flux",
+      "description": "Flux only via lib/flux/client.ts; no browser Flux",
+      "anchors": [
+        "lib/flux/client.ts",
+        "lib/flux/no-raw-fetch.test.ts",
+        "scripts/lib/security-invariants.ts"
+      ]
+    }
+  ]
+}
