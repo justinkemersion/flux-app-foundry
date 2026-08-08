@@ -52,6 +52,23 @@ for (const file of REQUIRED_FILES) {
   }
 }
 
+// pnpm/action-setup aborts when a version is declared both in the workflow and
+// in package.json `packageManager`. package.json stays the single source.
+const WORKFLOW_DIR = join(ROOT, ".github/workflows");
+for (const file of ["ci.yml", "dependency-check.yml"]) {
+  const path = join(WORKFLOW_DIR, file);
+  if (!existsSync(path)) continue;
+  const content = readFileSync(path, "utf8");
+  const setup = /uses:\s*pnpm\/action-setup@[^\n]*\n(?:\s*#[^\n]*\n)*(\s*with:\s*\n(?:\s+\S[^\n]*\n)*)/.exec(
+    content,
+  );
+  if (setup && /^\s*version:/m.test(setup[1])) {
+    failures.push(
+      `${file}: pnpm/action-setup pins a version; remove it so packageManager is authoritative`,
+    );
+  }
+}
+
 if (failures.length > 0) {
   console.error("Contract validation failed:\n" + failures.join("\n"));
   process.exit(1);

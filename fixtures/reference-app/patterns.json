@@ -1,10 +1,10 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "name": "foundry-reference-pattern-anchors",
   "role": "compatibility-canary",
   "notProduction": true,
   "baselineVersion": "0.6.0",
-  "mediaUpload": "deferred — no canonical baseline pattern",
+  "mediaUpload": "deferred \u2014 no canonical baseline pattern",
   "patterns": [
     {
       "id": "session-boundary",
@@ -19,16 +19,14 @@
       "id": "tenant-isolation",
       "description": "Tenant/user isolation via RLS jwt.sub = user_id",
       "anchors": [
-        "sql/migrations/0001_profiles.sql",
-        "sql/migrations/0004_core_entities.sql",
-        "sql/migrations/0006_child_record_ownership.sql"
+        "capability:tenant-rls-jwt-sub"
       ]
     },
     {
       "id": "parent-child-ownership",
       "description": "Parent + child records with parent-ownership enforcement",
       "anchors": [
-        "sql/migrations/0006_child_record_ownership.sql",
+        "capability:child-row-parent-ownership",
         "lib/flux/notes.ts",
         "app/(dashboard)/actions/notes.ts"
       ]
@@ -60,7 +58,7 @@
         "app/page.tsx",
         "app/login/page.tsx"
       ],
-      "note": "Baseline has no public entity/sharing RLS — only marketing/login public routes"
+      "note": "Baseline has no public entity/sharing RLS \u2014 only marketing/login public routes"
     },
     {
       "id": "archive-lifecycle",
@@ -83,21 +81,21 @@
       "id": "migrations-rls",
       "description": "Versioned migrations and RLS contracts",
       "anchors": [
-        "sql/migrations/0001_profiles.sql",
-        "sql/migrations/0002_profiles_grants.sql",
-        "sql/migrations/0004_core_entities.sql",
-        "sql/migrations/0005_core_grants.sql",
-        "sql/migrations/0006_child_record_ownership.sql"
+        "capability:tenant-rls-jwt-sub",
+        "capability:child-row-parent-ownership",
+        "sql/migrations"
       ]
     },
     {
       "id": "server-only-flux",
       "description": "Flux only via lib/flux/client.ts; no browser Flux",
       "anchors": [
+        "capability:no-browser-flux-access",
+        "capability:no-browser-flux-secrets",
         "lib/flux/client.ts",
-        "lib/flux/no-raw-fetch.test.ts",
         "scripts/lib/security-invariants.ts"
       ]
     }
-  ]
+  ],
+  "note": "Anchors prefixed 'capability:' assert a security property; plain anchors assert a Foundry-owned path. Migration filenames are application-owned and must never be anchors."
 }

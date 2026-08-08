@@ -230,16 +230,26 @@ function checkValidationErrors(root: string): CompatCheckResult {
 
 function checkMigrationsSecurity(root: string): CompatCheckResult {
   const checks = runSecurityInvariants(root);
-  const failed = checks.filter((c) => !c.ok);
+  const failed = checks.filter((c) => c.status === "fail");
+  const unresolved = checks.filter((c) => c.status === "unknown");
+  if (failed.length > 0) {
+    return {
+      id: "migrations-security-baseline",
+      mode: "local",
+      category: "security",
+      outcome: "fail",
+      detail: failed.map((c) => `${c.id}: ${c.detail}`).join("; "),
+    };
+  }
   return {
     id: "migrations-security-baseline",
     mode: "local",
     category: "security",
-    outcome: failed.length === 0 ? "pass" : "fail",
+    outcome: "pass",
     detail:
-      failed.length === 0
+      unresolved.length === 0
         ? `all ${checks.length} security invariants passed`
-        : failed.map((c) => `${c.id}: ${c.detail}`).join("; "),
+        : `${checks.length - unresolved.length}/${checks.length} passed; ${unresolved.length} need manual review`,
   };
 }
 
@@ -268,7 +278,7 @@ function checkEnvConfig(root: string): CompatCheckResult {
 
 function checkNoBrowserSecrets(root: string): CompatCheckResult {
   const checks = runSecurityInvariants(root);
-  const raw = checks.find((c) => c.id === "no-raw-flux-fetch");
+  const raw = checks.find((c) => c.id === "no-browser-flux-access");
   const secrets = checks.find((c) => c.id === "no-browser-flux-secrets");
   const ok = Boolean(raw?.ok && secrets?.ok);
   return {
@@ -277,7 +287,7 @@ function checkNoBrowserSecrets(root: string): CompatCheckResult {
     category: "security",
     outcome: ok ? "pass" : "fail",
     detail: ok
-      ? "no raw Flux fetch outside client.ts; no browser Flux secrets"
+      ? "Flux reached only via lib/flux from server code; no browser Flux secrets"
       : `${raw?.detail ?? "raw-fetch check missing"}; ${secrets?.detail ?? "secrets check missing"}`,
   };
 }

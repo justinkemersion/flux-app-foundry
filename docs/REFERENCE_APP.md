@@ -10,15 +10,31 @@ The Foundry template **is** the canonical reference application.
 | Pattern anchors + fixture layout | `patterns.json` + `domain/` + `negative/` present; anchors resolve |
 | Authenticated flow + fail-closed unauth | Dashboard layout redirect + `requireSessionSub` (+ domain canary) |
 | Public vs protected data/routes | `/`, `/login` public; `(dashboard)/**` protected |
-| Tenant / user isolation | RLS `jwt.sub = user_id` security invariant |
-| Parent / child ownership (+ tags) | `0006_child_record_ownership.sql` + ownership domain negatives |
+| Tenant / user isolation | `tenant-rls-jwt-sub` — ownership column discovered from the policy expression |
+| Parent / child ownership (+ tags) | `child-row-parent-ownership` — FK graph + policy analysis, any migration filename |
 | Create / read / update / archive | Server actions + `archived_at` soft-archive convention |
 | Server actions / API patterns | `"use server"` + `lib/flux`; only Auth.js API route |
 | Validation + safe errors | Zod + `actionError` sanitization |
 | Migrations + security baseline | Centralized `runSecurityInvariants` |
 | Env / config hygiene | `.env.example` secrets; no `NEXT_PUBLIC_FLUX_*` |
-| No browser Flux credentials / raw fetches | Security invariants + negative browser fixture |
+| No browser Flux credentials / raw fetches | `no-browser-flux-access` + `no-browser-flux-secrets` (evidence-based; third-party HTTP is allowed) |
 | Baseline / drift vs reference | `foundry:status` current + fixture `baselineVersion` match |
+
+## Security regression fixtures
+
+`fixtures/reference-app/security/` holds paired vulnerable and protected shapes so the analyzer's discrimination is itself tested. Each file states its expected verdict in a header comment.
+
+| Fixture | Expected |
+|---------|----------|
+| `0004_vulnerable_child.sql.txt` | `child-row-parent-ownership` **fail** — child write checks only its own owner id |
+| `0021_parent_ownership_renumbered.sql.txt` | **pass** — `EXISTS` against the parent, at a non-0006 number |
+| `0007_owner_user_id_ownership.sql.txt` | **pass** — ownership column is `owner_user_id` |
+| `0009_helper_delegated_ownership.sql.txt` | **unknown** — unresolvable membership helper, needs review |
+| `client-flux-fetch.fixture.ts.txt` | `no-browser-flux-access` **fail** |
+| `open-meteo-fetch.fixture.ts.txt` | **pass** — third-party API from a client component |
+| `nws-fetch.fixture.ts.txt` | **pass** — third-party API from server code |
+| `workers-ai-fetch.fixture.ts.txt` | **pass** — inference API with its own credential |
+| `workers-ai-leaks-flux.fixture.ts.txt` | **fail** — carries a Flux credential off-boundary |
 
 ## Deferred / live (Flux core or credentials)
 

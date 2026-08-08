@@ -1,0 +1,20 @@
+// CASE 8a — EXPECT: no-browser-flux-access PASS
+// Cloudflare Workers AI from server code. It uses its own account credential,
+// touches no Flux boundary, and must not be reported.
+
+export async function summarize(text: string): Promise<string> {
+  const accountId = process.env.CF_ACCOUNT_ID;
+  const res = await fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/meta/llama-3.1-8b-instruct`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.CF_AI_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ prompt: `Summarize:\n\n${text}` }),
+    },
+  );
+  const body = (await res.json()) as { result?: { response?: string } };
+  return body.result?.response ?? "";
+}

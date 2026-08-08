@@ -77,8 +77,12 @@ if (jsonMode) {
         : ""),
   );
   console.log("\nSecurity invariants");
+  const glyph = { pass: "✓", fail: "✗", unknown: "?" } as const;
   for (const c of securityChecks) {
-    console.log(`${c.ok ? "✓" : "✗"} ${c.id}: ${c.detail}`);
+    console.log(`${glyph[c.status]} ${c.id}: ${c.detail}`);
+    if (c.status !== "pass") {
+      for (const note of c.notes ?? []) console.log(`    · ${note}`);
+    }
   }
   if (report.findings.length > 0) {
     console.log("\nFindings");

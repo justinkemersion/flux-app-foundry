@@ -1,0 +1,25 @@
+-- CASE 2 + CASE 3 — EXPECT: child-row-parent-ownership PASS
+-- Applied on top of case 1. Two things are being asserted:
+--   * EXISTS against the parent is accepted as proof of ownership;
+--   * the fix lands at an arbitrary migration number (0021, not 0006), because
+--     migration numbering is application-owned history.
+
+drop policy if exists notes_select on notes;
+drop policy if exists notes_insert on notes;
+
+create policy notes_select on notes for select to authenticated using (
+  (current_setting('request.jwt.claims', true)::json->>'sub') = user_id
+  and exists (
+    select 1 from records r
+    where r.id = record_id
+      and r.user_id = (current_setting('request.jwt.claims', true)::json->>'sub')
+  )
+);
+create policy notes_insert on notes for insert to authenticated with check (
+  (current_setting('request.jwt.claims', true)::json->>'sub') = user_id
+  and exists (
+    select 1 from records r
+    where r.id = record_id
+      and r.user_id = (current_setting('request.jwt.claims', true)::json->>'sub')
+  )
+);

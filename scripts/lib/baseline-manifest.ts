@@ -40,8 +40,19 @@ export type FoundryBaselineManifest = {
   requiredPaths: string[];
   fingerprintGlobs: string[];
   securityBaseline: {
-    requiredMigrations: string[];
+    /**
+     * Security *capabilities* the app must demonstrate. Deliberately not a
+     * list of migration filenames — migration history is application-owned.
+     */
+    requiredCapabilities: string[];
     invariants: string[];
+    /** Optional, auditable escapes for architectures the analyzer cannot infer. */
+    ownership?: {
+      /** Extra ownership columns when a policy shape defeats static analysis. */
+      additionalOwnershipColumns?: string[];
+      /** Tables intentionally not tenant-scoped (public catalogs, lookups). */
+      exemptTables?: string[];
+    };
   };
   fingerprints: Record<string, string>;
 };
@@ -155,7 +166,21 @@ export function compareSemver(a: string, b: string): number {
   return 0;
 }
 
-export type SecurityCheck = { id: string; ok: boolean; detail: string };
+/**
+ * `unknown` means static analysis could not prove the property either way —
+ * it is surfaced for manual review rather than reported as a pass.
+ */
+export type SecurityCheckStatus = "pass" | "fail" | "unknown";
+
+export type SecurityCheck = {
+  id: string;
+  /** Retained for callers that only branch on pass/not-pass. */
+  ok: boolean;
+  status: SecurityCheckStatus;
+  detail: string;
+  /** Per-subject explanation lines (tables, files) backing the verdict. */
+  notes?: string[];
+};
 
 export function evaluateBaselineStatus(opts: {
   root: string;
@@ -253,14 +278,25 @@ export function evaluateBaselineStatus(opts: {
     });
   }
 
-  const failedSecurity = securityChecks.filter((c) => !c.ok);
+  const failedSecurity = securityChecks.filter((c) => c.status === "fail");
   for (const c of failedSecurity) {
     findings.push({
       code: `security:${c.id}`,
       severity: "error",
       message: c.detail,
       remediation:
-        "Restore security migrations/invariants from upstream Foundry. Never weaken RLS to make tests pass.",
+        "Fix the security property in your own migration/module — add a new numbered migration rather than renaming history. Never weaken RLS to make a check pass.",
+    });
+  }
+
+  const unknownSecurity = securityChecks.filter((c) => c.status === "unknown");
+  for (const c of unknownSecurity) {
+    findings.push({
+      code: `security-review:${c.id}`,
+      severity: "warn",
+      message: c.detail,
+      remediation:
+        "Static analysis could not prove this property. Review manually, then record the decision in securityBaseline.ownership if the pattern is intentional.",
     });
   }
 
@@ -282,6 +318,7 @@ export function evaluateBaselineStatus(opts: {
   } else if (
     missing.length > 0 ||
     changed.length > 0 ||
+    unknownSecurity.length > 0 ||
     findings.some((f) => f.code === "missing-script" || f.code === "missing-required-path")
   ) {
     status = "locally_customized";

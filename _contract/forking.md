@@ -47,6 +47,15 @@ Periodically merge or cherry-pick from `flux-app-foundry`:
 
 Legacy forks without `foundry.baseline.json` report `unknown` until they adopt the manifest.
 
+### Migrations are yours
+
+`sql/migrations/` is **application-owned history**. Foundry's security checks assert properties, not filenames, so:
+
+- Never rename or renumber an existing migration to satisfy a check — the Flux ledger records checksums, and rewriting history breaks it.
+- Close a security gap by adding a **new** numbered migration (`0021_parent_ownership.sql` is as valid as `0006_child_record_ownership.sql`).
+- Ownership columns may be named whatever your domain calls them; the analyzer reads the comparison, not the column name.
+- If a check reports `unknown`, it could not prove the property either way. Review it, and if the pattern is intentional record it under `securityBaseline.ownership` in `foundry.baseline.json` rather than weakening the policy.
+
 ## Flux schema
 
 Do not hand-edit schema names in SQL. Push with `flux push sql/migrations/` (versioned ledger), then `pnpm flux:schema:sync` after `flux init` / hash changes.

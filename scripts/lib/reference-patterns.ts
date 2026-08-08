@@ -3,6 +3,7 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { runSecurityInvariants } from "./security-invariants";
 
 export type ReferencePattern = {
   id: string;
@@ -36,6 +37,15 @@ export const REFERENCE_LAYOUT_FILES = [
   "domain/actions.ts",
   "negative/browser-flux-bad.fixture.ts.txt",
   "negative/cross-tenant-child.fixture.sql.txt",
+  "security/0004_vulnerable_child.sql.txt",
+  "security/0021_parent_ownership_renumbered.sql.txt",
+  "security/0007_owner_user_id_ownership.sql.txt",
+  "security/0009_helper_delegated_ownership.sql.txt",
+  "security/client-flux-fetch.fixture.ts.txt",
+  "security/open-meteo-fetch.fixture.ts.txt",
+  "security/nws-fetch.fixture.ts.txt",
+  "security/workers-ai-fetch.fixture.ts.txt",
+  "security/workers-ai-leaks-flux.fixture.ts.txt",
 ] as const;
 
 export function readReferencePatterns(root: string): ReferencePatternsManifest {
@@ -52,6 +62,13 @@ export function assertReferenceFixtureLayout(root: string): string[] {
   ).map((rel) => `${REFERENCE_FIXTURE_DIR}/${rel}`);
 }
 
+/**
+ * Anchors prefixed with `capability:` are satisfied by a passing security
+ * invariant rather than by a file at a fixed path. Security properties are
+ * Foundry-owned; the migration files that implement them are not.
+ */
+export const CAPABILITY_ANCHOR_PREFIX = "capability:";
+
 export function assertReferencePatternAnchors(root: string): string[] {
   const manifest = readReferencePatterns(root);
   const missing: string[] = [];
@@ -60,8 +77,24 @@ export function assertReferencePatternAnchors(root: string): string[] {
       "patterns.json must declare compatibility-canary / notProduction",
     );
   }
+
+  const needsCapabilities = manifest.patterns.some((p) =>
+    p.anchors.some((a) => a.startsWith(CAPABILITY_ANCHOR_PREFIX)),
+  );
+  const checks = needsCapabilities ? runSecurityInvariants(root) : [];
+
   for (const pattern of manifest.patterns) {
     for (const anchor of pattern.anchors) {
+      if (anchor.startsWith(CAPABILITY_ANCHOR_PREFIX)) {
+        const id = anchor.slice(CAPABILITY_ANCHOR_PREFIX.length);
+        const hit = checks.find((c) => c.id === id);
+        if (!hit) {
+          missing.push(`${pattern.id}: unknown capability ${id}`);
+        } else if (hit.status === "fail") {
+          missing.push(`${pattern.id}: capability ${id} failed — ${hit.detail}`);
+        }
+        continue;
+      }
       if (!existsSync(join(root, anchor))) {
         missing.push(`${pattern.id}: missing anchor ${anchor}`);
       }

@@ -27,9 +27,11 @@ Forks with configured `.env` should also pass `pnpm foundry:doctor` and `pnpm fo
 
 ## Baseline lifecycle
 
-- `foundry.baseline.json` — version + fingerprints for Foundry-owned paths
+- `foundry.baseline.json` — version + fingerprints for Foundry-owned paths, plus `securityBaseline.requiredCapabilities`
 - `pnpm foundry:status` — non-destructive drift report (`current` / `behind` / `locally_customized` / `missing_security` / `unknown`)
 - `fixtures/reference-app/` + `pnpm foundry:compat` — compatibility canary for Foundry-supported patterns
+
+Fingerprints track **provenance** of Foundry-owned files; capabilities track **security properties**. The two are deliberately separate: a fork may move or renumber a migration (a fingerprint warning) without losing a security capability, and it may keep every file byte-identical while still failing a capability.
 - Baseline release notes: `docs/BASELINE_CHANGELOG.md`
 - See `docs/adr/001-baseline-ownership.md` and `AGENTS.md`
 
@@ -39,6 +41,8 @@ Forks with configured `.env` should also pass `pnpm foundry:doctor` and `pnpm fo
 - Migrations contain RLS invariant and grants
 - Child-table policies enforce parent ownership where applicable
 - Centralized security invariants in `scripts/lib/security-invariants.ts` (also via `foundry:status`)
+
+Invariants assert properties, never filenames. Each reports `pass`, `fail`, or `unknown`; `unknown` means static analysis could not decide and requires human review — it is never treated as a pass.
 
 ## Observability
 

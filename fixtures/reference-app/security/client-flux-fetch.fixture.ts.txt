@@ -1,0 +1,21 @@
+// CASE 5 — EXPECT: no-browser-flux-access FAIL
+// A client component reaching the Flux API directly from the browser. The
+// evidence is the Flux config symbol on the request, not the bare fetch().
+"use client";
+
+import { useEffect, useState } from "react";
+
+export function RecordList() {
+  const [rows, setRows] = useState<unknown[]>([]);
+
+  useEffect(() => {
+    const base = process.env.NEXT_PUBLIC_FLUX_URL;
+    fetch(`${base}/records?select=*`, {
+      headers: { Accept: "application/json" },
+    })
+      .then((res) => res.json())
+      .then(setRows);
+  }, []);
+
+  return <pre>{JSON.stringify(rows, null, 2)}</pre>;
+}

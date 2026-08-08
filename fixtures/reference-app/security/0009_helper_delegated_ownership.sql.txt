@@ -1,0 +1,32 @@
+-- CASE 9 — EXPECT: child-row-parent-ownership UNKNOWN (manual review)
+-- Ownership is delegated to a membership helper that this repository does not
+-- define, so static analysis cannot prove the parent is owned. Reporting
+-- `unknown` is required here: silently passing would hide a real defect, and
+-- failing would punish a legitimate membership-based architecture.
+
+create table if not exists organizations (
+  id uuid primary key default gen_random_uuid(),
+  owner_user_id text not null,
+  name text not null
+);
+
+create table if not exists org_documents (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references organizations (id) on delete cascade,
+  owner_user_id text not null,
+  title text not null
+);
+
+alter table organizations enable row level security;
+alter table org_documents enable row level security;
+
+create policy organizations_select on organizations for select to authenticated using (
+  (current_setting('request.jwt.claims', true)::json->>'sub') = owner_user_id
+);
+create policy organizations_insert on organizations for insert to authenticated with check (
+  (current_setting('request.jwt.claims', true)::json->>'sub') = owner_user_id
+);
+
+create policy org_documents_insert on org_documents for insert to authenticated with check (
+  app_has_org_role(organization_id, array['owner', 'editor'])
+);

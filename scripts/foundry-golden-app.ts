@@ -10,6 +10,7 @@ import {
   existsSync,
   mkdtempSync,
   readFileSync,
+  renameSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -73,6 +74,27 @@ function expectStatusFailure(cwd: string, label: string, extraArgs = "") {
   }
 }
 
+type StatusJson = {
+  status: string;
+  securityChecks: Array<{ id: string; status: string; detail: string }>;
+};
+
+/** `foundry:status` exits non-zero for any non-current status, so tolerate it. */
+function readStatusJson(cwd: string): StatusJson {
+  const cmd = `${tsxBin} scripts/foundry-status.ts --json`;
+  const env = { ...process.env, FOUNDRY_GOLDEN_CHILD: "1" };
+  try {
+    return JSON.parse(execSync(cmd, { cwd, encoding: "utf8", env })) as StatusJson;
+  } catch (err) {
+    const stdout = (err as { stdout?: string }).stdout ?? "";
+    return JSON.parse(stdout) as StatusJson;
+  }
+}
+
+function securityStatus(report: StatusJson, id: string): string {
+  return report.securityChecks.find((c) => c.id === id)?.status ?? "missing";
+}
+
 const tmp = mkdtempSync(join(tmpdir(), "foundry-golden-"));
 const appDir = join(tmp, "app");
 console.log(`Materializing golden app at ${appDir}`);
@@ -111,6 +133,8 @@ try {
   console.log("\n→ legacy fixture: expect unknown");
   expectStatusFailure(legacyDir, "legacy fixture");
 
+  // Removing the parent-ownership migration must be caught by the *property*
+  // check, not by a filename lookup.
   const insecureDir = join(tmp, "insecure");
   copyTree(appDir, insecureDir);
   rmSync(join(insecureDir, "sql/migrations/0006_child_record_ownership.sql"), {
@@ -118,6 +142,35 @@ try {
   });
   console.log("\n→ insecure fixture: expect missing_security");
   expectStatusFailure(insecureDir, "insecure fixture");
+  const insecureReport = readStatusJson(insecureDir);
+  if (securityStatus(insecureReport, "child-row-parent-ownership") !== "fail") {
+    throw new Error(
+      "insecure fixture: child-row-parent-ownership should fail semantically",
+    );
+  }
+  console.log("insecure fixture correctly failed the parent-ownership property");
+
+  // Fork-awareness: the same protection under a different migration number
+  // must still satisfy the security baseline. Migration history is app-owned.
+  const renumberedDir = join(tmp, "renumbered");
+  copyTree(appDir, renumberedDir);
+  renameSync(
+    join(renumberedDir, "sql/migrations/0006_child_record_ownership.sql"),
+    join(renumberedDir, "sql/migrations/0021_parent_ownership.sql"),
+  );
+  console.log("\n→ renumbered fixture: expect security invariants still satisfied");
+  const renumberedReport = readStatusJson(renumberedDir);
+  if (renumberedReport.status === "missing_security") {
+    throw new Error(
+      "renumbered fixture: renaming an app-owned migration must not fail security",
+    );
+  }
+  for (const id of ["child-row-parent-ownership", "tenant-rls-jwt-sub"]) {
+    if (securityStatus(renumberedReport, id) !== "pass") {
+      throw new Error(`renumbered fixture: ${id} should still pass`);
+    }
+  }
+  console.log("renumbered fixture correctly kept its security capabilities");
 
   if (!existsSync(join(appDir, "foundry.baseline.json"))) {
     throw new Error("golden app missing foundry.baseline.json");
