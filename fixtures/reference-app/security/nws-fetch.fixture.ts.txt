@@ -1,0 +1,16 @@
+// CASE 7 — EXPECT: no-browser-flux-access PASS
+// Server-side third-party HTTP (US National Weather Service). Server code may
+// call any API it likes; only Flux traffic is confined to the Flux boundary.
+
+export async function fetchActiveAlerts(zone: string): Promise<string[]> {
+  const res = await fetch(`https://api.weather.gov/alerts/active/zone/${zone}`, {
+    headers: {
+      Accept: "application/geo+json",
+      "User-Agent": "parcelpop (contact@example.com)",
+    },
+    next: { revalidate: 300 },
+  });
+  if (!res.ok) return [];
+  const body = (await res.json()) as { features?: Array<{ properties?: { event?: string } }> };
+  return (body.features ?? []).flatMap((f) => (f.properties?.event ? [f.properties.event] : []));
+}

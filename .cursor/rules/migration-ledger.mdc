@@ -35,4 +35,4 @@ After a successful push: `pnpm flux:schema:sync` (when schema/profile may have c
 3. Run `pnpm flux:schema:sync` and verify (`pnpm flux:doctor` / tests as appropriate).
 4. **Commit** the migration file(s), then **git push** — do not treat a remote-only or ad-hoc DB change as done.
 
-Repeatable seeds belong under `flux/scripts/` (or similar), not mixed into versioned migration numbering.
+Repeatable seeds belong in scripts such as `scripts/seed-demo.ts` (or a documented seed path), not mixed into versioned migration numbering.

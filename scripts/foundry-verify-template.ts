@@ -29,6 +29,8 @@ run("pnpm lint");
 run("pnpm typecheck");
 run("pnpm test");
 run("pnpm foundry:new-app-check");
+run("pnpm foundry:status");
 run("pnpm build", TEMPLATE_BUILD_ENV);
 
 console.log("\nTemplate verify passed (no app .env required).");
+console.log("Note: golden generated-app acceptance is pnpm foundry:golden-app (CI).");

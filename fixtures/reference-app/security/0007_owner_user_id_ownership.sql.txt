@@ -1,0 +1,44 @@
+-- CASE 4 — EXPECT: tenant-rls-jwt-sub PASS, child-row-parent-ownership PASS
+-- The ownership column is `owner_user_id`, not `user_id`. Ownership is
+-- discovered from the comparison against the JWT subject, so the column may be
+-- named anything (owner_user_id, member_user_id, created_by, ...).
+
+create table if not exists recipe_families (
+  id uuid primary key default gen_random_uuid(),
+  owner_user_id text not null,
+  name text not null
+);
+
+create table if not exists recipe_variants (
+  id uuid primary key default gen_random_uuid(),
+  recipe_family_id uuid not null references recipe_families (id) on delete cascade,
+  owner_user_id text not null,
+  label text not null
+);
+
+alter table recipe_families enable row level security;
+alter table recipe_variants enable row level security;
+
+create policy recipe_families_select on recipe_families for select to authenticated using (
+  (current_setting('request.jwt.claims', true)::json->>'sub') = owner_user_id
+);
+create policy recipe_families_insert on recipe_families for insert to authenticated with check (
+  (current_setting('request.jwt.claims', true)::json->>'sub') = owner_user_id
+);
+
+create policy recipe_variants_select on recipe_variants for select to authenticated using (
+  (current_setting('request.jwt.claims', true)::json->>'sub') = owner_user_id
+  and exists (
+    select 1 from recipe_families f
+    where f.id = recipe_family_id
+      and f.owner_user_id = (current_setting('request.jwt.claims', true)::json->>'sub')
+  )
+);
+create policy recipe_variants_insert on recipe_variants for insert to authenticated with check (
+  (current_setting('request.jwt.claims', true)::json->>'sub') = owner_user_id
+  and exists (
+    select 1 from recipe_families f
+    where f.id = recipe_family_id
+      and f.owner_user_id = (current_setting('request.jwt.claims', true)::json->>'sub')
+  )
+);

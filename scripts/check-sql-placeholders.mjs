@@ -1,8 +1,13 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 const dir = join(process.cwd(), "sql/migrations");
 const failures = [];
+
+if (!existsSync(dir)) {
+  console.error(`SQL placeholder check failed:\nMissing directory ${dir}`);
+  process.exit(1);
+}
 
 for (const file of readdirSync(dir)) {
   if (!file.endsWith(".sql")) continue;

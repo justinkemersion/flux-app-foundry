@@ -1,0 +1,16 @@
+// CASE 8b — EXPECT: no-browser-flux-access FAIL
+// The same Workers AI shape, but this one forwards a Flux gateway credential
+// off-boundary. Case 8 passes "unless it actually exposes a prohibited Flux
+// credential/boundary" — this is that exception.
+
+export async function summarizeWithFluxContext(recordId: string): Promise<string> {
+  const context = await fetch(`${process.env.FLUX_URL}/records?id=eq.${recordId}`, {
+    headers: { Authorization: `Bearer ${process.env.FLUX_SERVICE_TOKEN}` },
+  }).then((res) => res.text());
+
+  const res = await fetch("https://api.cloudflare.com/client/v4/ai/run", {
+    method: "POST",
+    body: JSON.stringify({ prompt: context }),
+  });
+  return res.text();
+}

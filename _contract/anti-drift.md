@@ -19,14 +19,30 @@
 Run on every PR:
 
 1. `pnpm install`
-2. `pnpm foundry:verify:template` — lint, typecheck, test, drift checks, fork check, build (CI stub env; no `.env` file)
+2. `pnpm foundry:verify:template` — lint, typecheck, test, drift checks, fork check, `foundry:status`, build (CI stub env; no `.env` file)
+3. `pnpm foundry:golden-app` — materialize a fresh tree and validate generated output + status fixtures
+4. `pnpm foundry:compat` — canonical reference-app compatibility harness (local/deterministic; live probes opt-in)
 
 Forks with configured `.env` should also pass `pnpm foundry:doctor` and `pnpm foundry:verify` before merge.
 
+## Baseline lifecycle
+
+- `foundry.baseline.json` — version + fingerprints for Foundry-owned paths, plus `securityBaseline.requiredCapabilities`
+- `pnpm foundry:status` — non-destructive drift report (`current` / `behind` / `locally_customized` / `missing_security` / `unknown`)
+- `fixtures/reference-app/` + `pnpm foundry:compat` — compatibility canary for Foundry-supported patterns
+
+Fingerprints track **provenance** of Foundry-owned files; capabilities track **security properties**. The two are deliberately separate: a fork may move or renumber a migration (a fingerprint warning) without losing a security capability, and it may keep every file byte-identical while still failing a capability.
+- Baseline release notes: `docs/BASELINE_CHANGELOG.md`
+- See `docs/adr/001-baseline-ownership.md` and `AGENTS.md`
+
 ## Vitest guards
 
-- No raw `fetch` under `lib/` except `lib/flux/client.ts`
+- No raw `fetch` under `lib/` except `lib/flux/client.ts`, and none under `app/`
 - Migrations contain RLS invariant and grants
+- Child-table policies enforce parent ownership where applicable
+- Centralized security invariants in `scripts/lib/security-invariants.ts` (also via `foundry:status`)
+
+Invariants assert properties, never filenames. Each reports `pass`, `fail`, or `unknown`; `unknown` means static analysis could not decide and requires human review — it is never treated as a pass.
 
 ## Observability
 

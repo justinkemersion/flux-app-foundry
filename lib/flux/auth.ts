@@ -1,11 +1,7 @@
 import { auth } from "@/auth";
+import { UnauthorizedError } from "./errors";
 
-export class UnauthorizedError extends Error {
-  constructor(message = "Unauthorized") {
-    super(message);
-    this.name = "UnauthorizedError";
-  }
-}
+export { UnauthorizedError };
 
 /** Returns stable OAuth subject for Flux RLS / JWT `sub`. */
 export async function requireSessionSub(): Promise<string> {

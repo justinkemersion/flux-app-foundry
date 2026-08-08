@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 2,
+  "name": "foundry-reference-pattern-anchors",
+  "role": "compatibility-canary",
+  "notProduction": true,
+  "baselineVersion": "0.6.0",
+  "mediaUpload": "deferred \u2014 no canonical baseline pattern",
+  "patterns": [
+    {
+      "id": "session-boundary",
+      "description": "Authenticated user/session boundary via requireSessionSub",
+      "anchors": [
+        "lib/flux/auth.ts",
+        "auth.ts",
+        "app/(dashboard)/layout.tsx"
+      ]
+    },
+    {
+      "id": "tenant-isolation",
+      "description": "Tenant/user isolation via RLS jwt.sub = user_id",
+      "anchors": [
+        "capability:tenant-rls-jwt-sub"
+      ]
+    },
+    {
+      "id": "parent-child-ownership",
+      "description": "Parent + child records with parent-ownership enforcement",
+      "anchors": [
+        "capability:child-row-parent-ownership",
+        "lib/flux/notes.ts",
+        "app/(dashboard)/actions/notes.ts"
+      ]
+    },
+    {
+      "id": "tags-child-relation",
+      "description": "Tags as child/many-to-many relation on records",
+      "anchors": [
+        "sql/migrations/0004_core_entities.sql",
+        "lib/flux/records.ts",
+        "app/(dashboard)/actions/records.ts"
+      ]
+    },
+    {
+      "id": "protected-mutations",
+      "description": "Protected server actions with sanitized errors",
+      "anchors": [
+        "app/(dashboard)/actions/records.ts",
+        "app/(dashboard)/actions/notes.ts",
+        "lib/actions/result.ts"
+      ]
+    },
+    {
+      "id": "public-vs-private",
+      "description": "Explicit public routes vs authenticated dashboard",
+      "anchors": [
+        "app/(dashboard)/layout.tsx",
+        "middleware.ts",
+        "app/page.tsx",
+        "app/login/page.tsx"
+      ],
+      "note": "Baseline has no public entity/sharing RLS \u2014 only marketing/login public routes"
+    },
+    {
+      "id": "archive-lifecycle",
+      "description": "Archive sets status+archived_at; unarchive via status update",
+      "anchors": [
+        "app/(dashboard)/actions/records.ts",
+        "lib/flux/records.ts",
+        "sql/migrations/0004_core_entities.sql"
+      ]
+    },
+    {
+      "id": "validation-errors",
+      "description": "Zod validation + actionError fail-closed sanitization",
+      "anchors": [
+        "lib/actions/result.ts",
+        "app/(dashboard)/actions/records.ts"
+      ]
+    },
+    {
+      "id": "migrations-rls",
+      "description": "Versioned migrations and RLS contracts",
+      "anchors": [
+        "capability:tenant-rls-jwt-sub",
+        "capability:child-row-parent-ownership",
+        "sql/migrations"
+      ]
+    },
+    {
+      "id": "server-only-flux",
+      "description": "Flux only via lib/flux/client.ts; no browser Flux",
+      "anchors": [
+        "capability:no-browser-flux-access",
+        "capability:no-browser-flux-secrets",
+        "lib/flux/client.ts",
+        "scripts/lib/security-invariants.ts"
+      ]
+    }
+  ],
+  "note": "Anchors prefixed 'capability:' assert a security property; plain anchors assert a Foundry-owned path. Migration filenames are application-owned and must never be anchors."
+}

@@ -1,0 +1,23 @@
+// CASE 6 — EXPECT: no-browser-flux-access PASS
+// A client component calling a public weather API. This previously tripped the
+// old "no fetch() outside lib/flux/client.ts" rule. Third-party HTTP is
+// ordinary application code and must not be reported as a Flux violation.
+"use client";
+
+import { useEffect, useState } from "react";
+
+export function Forecast({ lat, lon }: { lat: number; lon: number }) {
+  const [temp, setTemp] = useState<number | null>(null);
+
+  useEffect(() => {
+    const url = new URL("https://api.open-meteo.com/v1/forecast");
+    url.searchParams.set("latitude", String(lat));
+    url.searchParams.set("longitude", String(lon));
+    url.searchParams.set("current", "temperature_2m");
+    fetch(url)
+      .then((res) => res.json())
+      .then((data) => setTemp(data.current?.temperature_2m ?? null));
+  }, [lat, lon]);
+
+  return <span>{temp === null ? "—" : `${temp}°`}</span>;
+}

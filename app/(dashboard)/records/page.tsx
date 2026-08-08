@@ -16,7 +16,10 @@ export default async function RecordsPage({
   const session = await auth();
   const sub = session!.user!.id;
   const params = await searchParams;
-  const status = params.status as RecordStatus | undefined;
+  const statusValues: RecordStatus[] = ["draft", "active", "archived"];
+  const status = statusValues.includes(params.status as RecordStatus)
+    ? (params.status as RecordStatus)
+    : undefined;
   const tag = params.tag;
 
   let records: Awaited<ReturnType<typeof listRecords>> = [];

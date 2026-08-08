@@ -1,0 +1,116 @@
+{
+  "id": "foundry-reference-app",
+  "name": "Flux Foundry Canonical Reference",
+  "purpose": "Durable compatibility canary for Foundry-supported application patterns. Intentionally boring platform verification — not product UX.",
+  "ownership": "Foundry-owned fixture. Documents and validates the template app as the reference subject; do not fork this into a second product app.",
+  "subject": ".",
+  "baselineVersion": "0.6.0",
+  "docs": [
+    "fixtures/reference-app/README.md",
+    "fixtures/reference-app/patterns.json",
+    "docs/REFERENCE_APP.md",
+    "docs/BASELINE_CHANGELOG.md"
+  ],
+  "capabilities": [
+    {
+      "id": "pattern-anchors",
+      "mode": "local",
+      "category": "canary",
+      "summary": "Reference fixture layout, domain canaries, negative fixtures, and template pattern anchors exist."
+    },
+    {
+      "id": "auth-fail-closed",
+      "mode": "local",
+      "category": "auth",
+      "summary": "Authenticated dashboard requires session; unauthenticated access fails closed."
+    },
+    {
+      "id": "public-vs-protected",
+      "mode": "local",
+      "category": "routes",
+      "summary": "Explicit public routes (/ , /login) vs protected dashboard tree."
+    },
+    {
+      "id": "tenant-isolation-rls",
+      "mode": "local",
+      "category": "isolation",
+      "summary": "RLS policies bind rows to jwt.sub = user_id."
+    },
+    {
+      "id": "parent-child-ownership",
+      "mode": "local",
+      "category": "isolation",
+      "summary": "Notes and record_tags require owning parent records row."
+    },
+    {
+      "id": "crud-archive-conventions",
+      "mode": "local",
+      "category": "crud",
+      "summary": "Create/read/update/archive via server actions; archive sets status + archived_at."
+    },
+    {
+      "id": "server-actions-api-patterns",
+      "mode": "local",
+      "category": "access",
+      "summary": "Mutations go through server actions + lib/flux; only Auth.js API route."
+    },
+    {
+      "id": "validation-safe-errors",
+      "mode": "local",
+      "category": "errors",
+      "summary": "Zod validation and actionError sanitize Unauthorized/Flux/generic failures."
+    },
+    {
+      "id": "migrations-security-baseline",
+      "mode": "local",
+      "category": "security",
+      "summary": "Required security migrations and centralized invariants pass."
+    },
+    {
+      "id": "env-config-behavior",
+      "mode": "local",
+      "category": "config",
+      "summary": ".env.example documents required secrets without browser Flux credentials."
+    },
+    {
+      "id": "no-browser-flux-credentials",
+      "mode": "local",
+      "category": "security",
+      "summary": "No NEXT_PUBLIC_FLUX_* or raw Flux fetches outside lib/flux/client.ts."
+    },
+    {
+      "id": "baseline-drift-detection",
+      "mode": "local",
+      "category": "lifecycle",
+      "summary": "foundry.baseline.json present; status current; reference baselineVersion matches."
+    },
+    {
+      "id": "live-authenticated-bridge",
+      "mode": "live",
+      "category": "flux-live",
+      "summary": "Authenticated gateway bridge probe against a real Flux endpoint.",
+      "requires": ["FLUX_URL", "FLUX_GATEWAY_JWT_SECRET", "FLUX_POSTGREST_SCHEMA"]
+    },
+    {
+      "id": "live-unauth-gateway-contract",
+      "mode": "live",
+      "category": "flux-core-pending",
+      "summary": "Unauthenticated gateway fail-closed semantics for tenant data.",
+      "pendingReason": "Flux-core / gateway contract — Foundry must not invent or fake unauth gateway behavior."
+    },
+    {
+      "id": "live-jwt-bridging-semantics",
+      "mode": "live",
+      "category": "flux-core-pending",
+      "summary": "App JWT (role: authenticated) bridged to tenant role (t_*_role).",
+      "pendingReason": "Depends on Flux gateway mintBridgedTenantJwt; encode as live probe, never shim locally."
+    },
+    {
+      "id": "live-schema-rewrite-v2",
+      "mode": "live",
+      "category": "flux-core-pending",
+      "summary": "v2 push rewrite of GRANT … TO authenticated / ON SCHEMA public into t_*_api / t_*_role.",
+      "pendingReason": "Schema rewrite behavior belongs to Flux core, not Foundry."
+    }
+  ]
+}

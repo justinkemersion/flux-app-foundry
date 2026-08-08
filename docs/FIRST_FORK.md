@@ -15,7 +15,7 @@ git remote set-url origin git@github.com:you/roommating.git
 
 1. Update `package.json` `name` to your app (e.g. `roommating`). UI title and `<title>` derive from this (title-cased) unless you set `NEXT_PUBLIC_APP_NAME` / `NEXT_PUBLIC_APP_TAGLINE` in `.env`.
 2. Rebrand `README.md` for your domain.
-3. Edit `FOUNDRY_BASELINE.md`:
+3. Keep `foundry.baseline.json` from upstream (do not re-stamp). Edit `FOUNDRY_BASELINE.md`:
 
 ```md
 Based on: flux-app-foundry
@@ -26,7 +26,8 @@ Local deviations:
 - (list domain-specific additions)
 ```
 
-4. Keep `_drift/dependency-exceptions.md` empty unless you pin a package.
+4. Keep `AGENTS.md` and `_drift/dependency-exceptions.md` (empty unless you pin a package).
+5. Read `docs/adr/001-baseline-ownership.md` for Foundry-owned vs app-owned paths.
 
 ## 3. Environment
 
@@ -60,6 +61,7 @@ Do **not** search-replace schema names in SQL. Migrations are unqualified; Flux 
 
 ```bash
 pnpm foundry:verify:template
+pnpm foundry:status
 ```
 
 **Configured app (after `.env` + Flux sync):**
@@ -67,6 +69,7 @@ pnpm foundry:verify:template
 ```bash
 pnpm flux:doctor
 pnpm foundry:doctor
+pnpm foundry:status
 pnpm foundry:new-app-check
 pnpm foundry:verify
 ```
@@ -75,13 +78,14 @@ pnpm foundry:verify
 
 ## 6. Domain work
 
-- Add plans under `plans/` (e.g. `007-room-expenses.md`)
-- Add SQL as `0006_*.sql` + grants file — never rewrite `0001`–`0005`
+- Add plans under `plans/` (e.g. `009-roommating-first-domain.md` or `NNN-your-domain.md`)
+- Add SQL as new numbered files (e.g. `0007_*.sql` + grants) — never rewrite applied upstream migrations
 - Add routes under `app/(dashboard)/`
 - Read `_contract/forking.md` before large changes
 
 ## 7. Ongoing maintenance
 
 - Monthly: `pnpm deps:check`, follow `prompts/upgrade-dependencies.md`
-- When syncing upstream: update `FOUNDRY_BASELINE.md` last-synced date
+- When syncing upstream: merge Foundry-owned paths, run `pnpm foundry:status --reference <upstream/foundry.baseline.json>`, update `FOUNDRY_BASELINE.md`
 - After Flux platform changes: `pnpm flux:doctor`
+- High/critical dependency advisories: patch promptly per `_contract/dependency-policy.md`

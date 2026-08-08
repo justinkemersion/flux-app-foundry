@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 /**
- * Derives FLUX_POSTGREST_SCHEMA from flux.json and merges into .env.local.
- * No manual SQL schema editing.
+ * Writes FLUX_POSTGREST_SCHEMA into .env.local from control-plane apiSchema
+ * (hash-derived fallback when offline). No manual SQL schema editing.
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";

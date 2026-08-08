@@ -1,0 +1,34 @@
+-- CASE 1 — EXPECT: child-row-parent-ownership FAIL
+-- The child carries its own user_id, so the policy looks tenant-scoped, but a
+-- caller who learns another tenant's records.id can still attach a note to it.
+-- This is the Habitat-shaped defect the fleet audit found.
+
+create table if not exists records (
+  id uuid primary key default gen_random_uuid(),
+  user_id text not null,
+  title text not null
+);
+
+create table if not exists notes (
+  id uuid primary key default gen_random_uuid(),
+  record_id uuid not null references records (id) on delete cascade,
+  user_id text not null,
+  body text not null
+);
+
+alter table records enable row level security;
+alter table notes enable row level security;
+
+create policy records_select on records for select to authenticated using (
+  (current_setting('request.jwt.claims', true)::json->>'sub') = user_id
+);
+create policy records_insert on records for insert to authenticated with check (
+  (current_setting('request.jwt.claims', true)::json->>'sub') = user_id
+);
+
+create policy notes_select on notes for select to authenticated using (
+  (current_setting('request.jwt.claims', true)::json->>'sub') = user_id
+);
+create policy notes_insert on notes for insert to authenticated with check (
+  (current_setting('request.jwt.claims', true)::json->>'sub') = user_id
+);

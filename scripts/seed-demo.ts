@@ -6,11 +6,22 @@ import { createNote } from "../lib/flux/notes";
 import { createRecord, addTag } from "../lib/flux/records";
 import { logActivity } from "../lib/flux/activity";
 import { upsertProfile } from "../lib/flux/profiles";
+import { loadEnvFiles } from "./lib/load-env";
+
+loadEnvFiles(process.cwd());
 
 async function main() {
-  const sub = process.env.DEMO_USER_SUB;
+  const sub = process.env.DEMO_USER_SUB?.trim();
   if (!sub) {
     console.error("Set DEMO_USER_SUB to your OAuth provider account id");
+    process.exit(1);
+  }
+  if (!process.env.FLUX_URL?.trim()) {
+    console.error("Set FLUX_URL (see .env.example / docs/FLUX_WORKFLOW.md)");
+    process.exit(1);
+  }
+  if (!process.env.FLUX_GATEWAY_JWT_SECRET?.trim()) {
+    console.error("Set FLUX_GATEWAY_JWT_SECRET");
     process.exit(1);
   }
 
@@ -46,6 +57,6 @@ async function main() {
 }
 
 main().catch((e) => {
-  console.error(e);
+  console.error(e instanceof Error ? e.message : e);
   process.exit(1);
 });
