@@ -1,0 +1,22 @@
+// CASE 10 — EXPECT: no-browser-flux-access PASS
+// A client component borrowing a row type from the Flux boundary. `import type`
+// is erased before bundling, so nothing reaches Flux at runtime and no Flux
+// code ships to the browser. Found in the fleet sweep as the analyzer's only
+// remaining false positive.
+"use client";
+
+import type { MoodOutputRow } from "@/lib/flux/types";
+
+export function OutputTable({ rows }: { rows: MoodOutputRow[] }) {
+  return (
+    <table>
+      <tbody>
+        {rows.map((row) => (
+          <tr key={row.id}>
+            <td>{row.label}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}

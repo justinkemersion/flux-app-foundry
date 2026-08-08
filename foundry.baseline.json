@@ -5,7 +5,7 @@
   "name": "flux-app-foundry",
   "source": {
     "repository": "https://github.com/justinkemersion/flux-app-foundry",
-    "commit": "410fb46978113c690b4662a009304174ae30b01f",
+    "commit": "449fe824cf1ae6d1bf6afac7a39eeaa966bb2a1b",
     "ref": "main"
   },
   "fluxSurface": {
@@ -135,6 +135,7 @@
     "fixtures/reference-app/security/0009_helper_delegated_ownership.sql.txt": "06e973aab3b6025972a9fffc125c5fed6faaf2815d4e5f145a6fb354be846812",
     "fixtures/reference-app/security/0021_parent_ownership_renumbered.sql.txt": "891eb95f9af74538acca26f7c785a2cef9e466e25919ff670d364f39ccce81cc",
     "fixtures/reference-app/security/client-flux-fetch.fixture.ts.txt": "3fcb85918c50fc9705e956cc4ce959f11939dc7a89dfda3b8f6621782b988379",
+    "fixtures/reference-app/security/client-flux-type-import.fixture.ts.txt": "ed6eda5e294013660706837f90e8c4e0657132d921c6b33fecc3d28a88374cbb",
     "fixtures/reference-app/security/nws-fetch.fixture.ts.txt": "0b7b31854893b958e9dcb34efc020336e467519f72c39186a70cb914ddeff24c",
     "fixtures/reference-app/security/open-meteo-fetch.fixture.ts.txt": "4d54bfc13bb685395ffc28ee3a4f40bc4d1198cce285b5750ca1b0f9189bdcb2",
     "fixtures/reference-app/security/workers-ai-fetch.fixture.ts.txt": "7be6d5ba1d2ae7a89b4754dfe290a94abdb6313f8699e5dfeab21f0eeca0116f",
@@ -164,13 +165,13 @@
     "scripts/foundry-status.ts": "ae5310dd90790dddc1b809940e0ba51b2fe5cffe488c4eb3446500c5451ed952",
     "scripts/foundry-verify-template.ts": "0ef57075ff78be272101aa9473d529b344fb6496c2a786b04a9786a515dd656b",
     "scripts/lib/baseline-manifest.ts": "fb9037d6265004589aedeaa2a76b365cea2ab8c76c1df2d87d74b8ba650a80f5",
-    "scripts/lib/flux-access-analysis.ts": "30c131cc3d5a9882609a042d34a5ba4053aa7ccddaa2aee8748369f9d6a2739e",
+    "scripts/lib/flux-access-analysis.ts": "f39a80d39f7e1d5a82988d8b5d4a3de1277c1ffcfd17af08ead03619d6d2f9bf",
     "scripts/lib/flux-control-plane.ts": "7c6e39c8ed6e0f9d9a4bc148a4ae3f4ff8c5d1a6bc4aecce61fe8f65229fa19d",
     "scripts/lib/flux-doctor-checks.ts": "05145aea3373fb75a3b524c832b4679b0fa7f67b81f23e5e3639ef79f84cb226",
     "scripts/lib/flux-probes.ts": "bd6357f2f2b52730f38397d21e1e735f6ae4ab5cebaeb5de9c62c7b1dfb64943",
     "scripts/lib/reference-compat.ts": "7ba6ea2c517b9828c1d3a8b1674bc4357f5ee527aacafbaa0771ed93b6bf3eae",
     "scripts/lib/reference-negative.ts": "a42a4a466b0d1ba4727a3f324b0c8c36d041d69e01933ce5192ec0b449f45ba0",
-    "scripts/lib/reference-patterns.ts": "1adf2d4006daed3dea31409eecaf30fe3319208561335c92597cdc9f39024801",
+    "scripts/lib/reference-patterns.ts": "92b769a03ef3ff7df8b6b251fededc527a841f3e6e2b0fa8fdb9c24192c49610",
     "scripts/lib/security-invariants.ts": "f883ff6d15a71df710ffe884b004b29eab1b99247461aa777866025aaccde042",
     "scripts/lib/sql-policy-analysis.ts": "dea9364cbe7ed29258fea52edaf81105ef977ef035f9faa08c5631e7998b005b",
     "scripts/lib/template-build-env.ts": "96fe77838fbccd76e12cf237cdc8a6514c334fa3a47a90374864c4950b05d47a",

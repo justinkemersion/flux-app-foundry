@@ -38,8 +38,18 @@ export type FluxAccessFacts = {
   publicFluxEnv: boolean;
 };
 
+/**
+ * `import type` / `export type` are erased before bundling, so a component
+ * that only borrows a Flux row type never reaches Flux at runtime.
+ */
+function stripTypeOnlyImports(code: string): string {
+  return code.replace(/^\s*(?:import|export)\s+type\s[^\n]*$/gm, " ");
+}
+
 export function analyzeFluxAccess(src: string): FluxAccessFacts {
-  const code = src.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+  const code = stripTypeOnlyImports(
+    src.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " "),
+  );
   return {
     isClientModule: /^\s*["']use client["']/m.test(src),
     callsFetch: /(?<![.\w])fetch\s*\(/.test(code),

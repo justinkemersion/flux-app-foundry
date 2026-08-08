@@ -42,6 +42,7 @@ export const REFERENCE_LAYOUT_FILES = [
   "security/0007_owner_user_id_ownership.sql.txt",
   "security/0009_helper_delegated_ownership.sql.txt",
   "security/client-flux-fetch.fixture.ts.txt",
+  "security/client-flux-type-import.fixture.ts.txt",
   "security/open-meteo-fetch.fixture.ts.txt",
   "security/nws-fetch.fixture.ts.txt",
   "security/workers-ai-fetch.fixture.ts.txt",

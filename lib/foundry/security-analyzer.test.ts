@@ -115,6 +115,13 @@ describe("Flux access detection is evidence-based", () => {
     expect(hits).toEqual([]);
   });
 
+  it("case 10: a type-only Flux import from a client component is not access", () => {
+    const hits = fluxViolations("client-flux-type-import.fixture.ts.txt", {
+      browserReachable: true,
+    });
+    expect(hits).toEqual([]);
+  });
+
   it("case 8b: Workers AI that carries a Flux credential off-boundary fails", () => {
     const hits = fluxViolations("workers-ai-leaks-flux.fixture.ts.txt", {
       browserReachable: false,
