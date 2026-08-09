@@ -297,8 +297,8 @@ in scope:
 |---|---|---|---|
 | `habitat` | 132 | 44 | (deferred, dirty) |
 | `theshelf` | 58 | 20 | (deferred, dirty) |
-| `yeast-coast-2` | 58 | 39 | `recipe_variants.family_id -> recipe_families` |
-| `noisydesign` | 54 | 36 | `photo_assets.photo_id -> photos`, `roll_photos.roll_id -> rolls` |
+| `yeast-coast-2` | 58 → **9** (fixed, PR #11) | 39 | `recipe_variants.family_id -> recipe_families` |
+| `noisydesign` | 54 → **3** (fixed, PR #5) | 36 | `photo_assets.photo_id -> photos`, `roll_photos.roll_id -> rolls` |
 | `casa-panel` | 36 | 12 | `panels/panel_sections/modes/rules/house_notes` |
 | `balance` | 27 | 9 | `meal_components`, `saved_meal_components`, `recipe_ingredients`, `routine_*` |
 | `flux-control-room` | 15 | 5 | (deferred, dirty) |
@@ -343,8 +343,8 @@ throws converted to `UserFacingError`).
 | `living-language` | unknown | PASS | PASS | PASS | PASS | PASS |
 | `lighthouse` | unknown | unknown | PASS | PASS | PASS | PASS |
 | `balance` | PASS | **FAIL** | PASS | PASS | PASS (PR #5) | PASS |
-| `noisydesign` | PASS | **FAIL** | PASS | PASS | PASS | PASS |
-| `yeast-coast-2` | unknown | **FAIL** | PASS | PASS | PASS | PASS |
+| `noisydesign` | PASS | PASS† (PR #5) | PASS | PASS | PASS | PASS |
+| `yeast-coast-2` | unknown | PASS† (PR #11) | PASS | PASS | PASS | PASS |
 | `roommating` | PASS | **FAIL** | PASS | PASS | PASS | PASS |
 | `casa-panel` | PASS | **FAIL** | PASS | PASS | PASS | PASS |
 | `percept` | unknown | unknown | PASS | **FAIL** | **FAIL** | **FAIL** |
@@ -352,6 +352,12 @@ throws converted to `UserFacingError`).
 | `habitat` | PASS | **FAIL** | PASS | **FAIL** | **FAIL** | PASS |
 | `theshelf` | PASS | **FAIL** | PASS | **FAIL** | **FAIL** | PASS |
 | `logos-engine` | **FAIL** | **FAIL** | PASS | **FAIL** | **FAIL** | PASS |
+
+† `noisydesign` and `yeast-coast-2` still emit 3 and 9 analyzer FAILs respectively. Every one is a
+deliberate design choice recorded under "Class B remediation": edges enforced by composite foreign
+keys, which the analyzer cannot see, and owner-only deletes on the social tables. The exploits
+themselves are proven closed. The analyzer needs the foreign-key rule taught to it before these can
+read as a clean PASS — folded into the `analyzer_precision` follow-up.
 
 Stage 7's gate cannot honestly pass while the app-specific child-ownership failures stand.
 Escalated rather than improvised: remediating ~130 table→parent links across 9 repos is a
@@ -384,7 +390,12 @@ proof. Tightening them to `households.user_id` would lock every non-owner member
 shared household. The analyzer still reports those 12 as FAIL — it cannot equate a
 junction-table membership proof with ownership of the parent row.
 
-### Class B — public content injection (`noisydesign`, `yeast-coast-2`) — HIGH, open
+### Class B — public content injection (`noisydesign`, `yeast-coast-2`) — HIGH, FIXED
+
+> **Resolved 2026-08-09.** Both exploits were reproduced end to end against a throwaway local
+> Postgres and both are now closed. See "Class B remediation" below for the proof tables, the
+> two PRs, and the two things the audit had wrong. The analysis in this section is the original
+> finding and is preserved as evidence.
 
 This is the class that actually completes an exploit chain, and the analyzer never distinguished
 it. The write policy is unrestricted:
@@ -417,6 +428,54 @@ the victim's page**. Same shape for `featured_items` (reaches the front page), `
 `variant_ingredients`, `variant_mash_steps`, `variant_stats`, `variant_media`, `media_assets`
 are all exposed through the parent `recipe_variants` published/public state with no child
 `user_id` check — injected ingredients or media would appear on a victim's published recipe.
+
+### Class B remediation — both exploits proven, then closed (2026-08-09)
+
+Method: each repo's tenant SQL was applied to a disposable local `postgres:16` container (the same
+major version the v2_shared engine runs), with two synthetic owners A and B. No tenant data, no
+private data, and no live Flux contact. Both repos were clean and level with `origin/main` before
+any work started. Nothing was deployed and no production migration was pushed.
+
+| Project | Vulnerable edge | Exploit before | Policy fix | Exploit after | Analyzer | Tests | Build | PR |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `noisydesign` | 18 FKs across 8 child tables, e.g. `photo_assets.photo_id -> photos` | 10 of 10 cross-parent writes accepted; **7 injected rows rendered publicly on the victim's pages** | `0018` adds a parent-ownership test per FK, keeping the child-owner test; `photo_tags.tag_id` via composite FK | **0 of 10 accepted**, 7 → **0** publicly visible; 6 legitimate owner writes still pass | 54 → **3 FAIL** (all the FK-enforced edge) | 63 static pass | pass | [#5](https://github.com/justinkemersion/noisydesign/pull/5) |
+| `yeast-coast-2` | 20 FKs the analyzer found + 2 `hero_media_id` edges it missed | 25 of 25 writes accepted; **4 injected rows rendered publicly** and **B's private media served to anonymous visitors** | `0027` binds each write to the boundary its reads use: `owned` for private structure, `visible` for social; media edges via composite FK | **15 of 15 attacks rejected**, 10 legitimate writes still pass; injection 4 → **0**, private media **no longer served** | 58 → **9 FAIL** (6 FK-enforced, 3 intentional owner-only social deletes) | 233 pass (42 files) | pass | [#11](https://github.com/justinkemersion/yeast-coast-2/pull/11) |
+
+Each repo also gains a static `child-parent-authorization.test.ts` asserting the correct boundary
+per edge, that nothing is authorized with `true` or a hardcoded tenant role, and that the visitor
+read policies are untouched. `lint`, `typecheck`, `check:drift` and `build` pass in both.
+
+**Two things this audit had wrong.**
+
+1. **`yeast-coast-2` is not the same shape as `noisydesign`.** Uniform parent-ownership would have
+   broken the product: commenting on, appreciating, saving and collecting another brewer's
+   published recipe is the point. The correct rule is that a child write must require exactly what
+   the child's *read* requires — ownership for private structure, public-and-published-or-owned for
+   social. A first pass that applied ownership everywhere rejected all five social writes in the
+   fixture, which is how this was caught.
+2. **The worst edge was never in the finding.** `media_assets_visitor_select` infers publication
+   from the *reference*, so an owner could point their own public variant or hero image at somebody
+   else's **private** asset and the visitor policy would serve it — a confidentiality breach, not
+   just injection. Neither `recipe_variants.hero_media_id` nor `recipe_families.hero_media_id` was
+   flagged by the analyzer, because it only considers tables it classifies as children.
+
+**Two constraints discovered that shape any similar fix.**
+
+- **Policy subqueries recurse.** Where a parent's read policy reads the child (`tags` in
+  `noisydesign`, `media_assets` in `yeast-coast-2`), proving parent ownership inside the child's
+  policy raises `infinite recursion detected in policy`. Composite foreign keys give the same
+  guarantee, are not subject to RLS, and cannot recurse. `ON DELETE SET NULL` must be
+  column-scoped so a `NOT NULL` owner column is not nulled; that needs PG 15+, and Flux runs 16.
+- **RLS applies inside a policy's own subqueries.** A "parent is visible" test cannot pass if the
+  caller cannot read the parent. `yeast-coast-2` had no authenticated public select on
+  `recipe_families` / `recipe_variants`, so `0027` adds them mirroring `collections_public_select`.
+  This also means `recipe_comments_public_select` and `collection_recipes_public_select` from
+  `0021` have never matched for a non-owner — they were dead policies, now live.
+
+**Test-safety hazard worth recording.** `noisydesign`'s `pnpm test` runs
+`noisydesign.rls.integration.test.ts`, which calls `loadEnvFiles()`; with the repo's local `.env`
+present, its guard passes and the suite targets the **live** tenant. Only named static files were
+run there. `yeast-coast-2` has no live suite, so its full suite was safe to run.
 
 ### Class C — integrity only (`balance`, `casa-panel`) — LOW, open
 
@@ -642,3 +701,37 @@ superseded predecessor of `yeast-coast-2`, but it is still Active/Running). `the
 `yeastcoast` have no local checkout, so they cannot be audited from this workstation as-is.
 Completion criteria cannot claim a clean fleet while three live projects have never been
 evaluated.
+
+## Release-blocker position after Class B (2026-08-09)
+
+**Both high-severity public-read child-injection flaws are closed.** `noisydesign` PR
+[#5](https://github.com/justinkemersion/noisydesign/pull/5) and `yeast-coast-2` PR
+[#11](https://github.com/justinkemersion/yeast-coast-2/pull/11) each carry the migration plus a
+static regression test, with the exploit reproduced and then proven rejected on a disposable local
+Postgres. Neither still blocks application relaunch **once merged and pushed to its tenant** —
+both migrations are unpushed, so the live schemas remain vulnerable until Stage 10.
+
+Remaining child-ownership blockers, by class:
+
+| Class | Repos | Count | Blocks relaunch? |
+| --- | --- | --- | --- |
+| A — cross-tenant read breach | — | 0 | resolved (`roommating`) |
+| B — public content injection | — | 0 | resolved (this pass) |
+| C — integrity only | `balance`, `casa-panel` | 63 policy FAILs | No. Injected rows are invisible to the victim; every SELECT filters on the child's own `user_id`. |
+| Deferred (dirty or by decision) | `habitat`, `theshelf`, `flux-control-room`, `logos-engine` | 218 policy FAILs | Documented blockers, not remediable without touching dirty trees. |
+
+So the only unresolved *inherited* security work is Class C, which is low severity by evidence
+rather than by assumption. The release-blocking question now rests on deployment sequencing
+(Stages 7–10), not on undiscovered authorization defects in the audited set.
+
+**Next unevaluated live project: `bloom-atelier`** (v2_shared, 3 tables). It was held back
+deliberately while the two high-severity items were closed, and is now the front of the queue. Two
+live projects behind it still have no local checkout (`the-shelf`, `yeastcoast`), so the fleet gate
+cannot claim complete coverage until that is resolved.
+
+Also carried forward from this pass, both feeding `analyzer_precision`:
+
+- The analyzer cannot see composite foreign keys, so a correctly-closed edge still reads as FAIL.
+- The analyzer only evaluates tables it classifies as children, so it missed
+  `recipe_variants.hero_media_id` and `recipe_families.hero_media_id` — the edges that allowed
+  another owner's **private** media to be served publicly, the most severe finding of this pass.
