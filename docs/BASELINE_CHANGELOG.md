@@ -5,6 +5,42 @@ When security or Foundry-owned contracts change, add an entry here **and** bump 
 
 Forks: read the entry for each skipped version and apply the listed sync steps.
 
+## 0.6.1 — 2026-08-08
+
+**Theme:** Safe opt-in error pass-through, and an `action-errors-no-leak` check that judges shape instead of imports.
+
+### Why
+
+The fleet audit found `action-errors-no-leak` failing in **every** fork. The inherited shape was:
+
+```ts
+if (error instanceof Error) return { ok: false, error: error.message };
+```
+
+`FluxHttpError` is `(message, status, body)` and embeds the Flux status line and response body in its message, so that branch rendered Flux internals straight into the browser.
+
+Three forks (`noisydesign`, `parcelpop`, `yeast-coast-2`) could not simply adopt the sanitizing version, because they intentionally use `throw new Error("...")` to carry real domain messages to users ("Alt text is required before publishing a frame."). Sanitizing unconditionally would have replaced those with "Something went wrong" — trading a security leak for a UX regression. `UserFacingError` resolves that without weakening the boundary.
+
+### Added
+
+- `UserFacingError` in `lib/flux/errors.ts` — an explicit, opt-in marker for messages that are safe to show the user. `actionError` passes its message through verbatim; everything else is still sanitized. Never construct it from a Flux response or other untrusted string.
+- `classifyActionErrorSource()` exported from `scripts/lib/security-invariants.ts` — the pure form of the check, so fixtures can exercise it directly.
+- `fixtures/reference-app/security/action-error-leaks.fixture.ts.txt` and `action-error-user-facing.fixture.ts.txt` — vulnerable vs protected canaries.
+
+### Fixed
+
+- `action-errors-no-leak` was **presence-only**: it looked for `FluxHttpError`, `"Request failed. Please try again."`, and `"Unauthorized"` as substrings. A file could import every sanitization symbol, keep the raw-message leak, and still pass. It now fails any generic `instanceof Error` branch that returns a raw `.message` to the client, while deliberately allowing narrowings to a specific subclass so the `UserFacingError` pass-through stays legal.
+
+### Downstream forks must
+
+1. Sync `lib/flux/errors.ts` and `lib/actions/result.ts`.
+2. Replace intentional user-facing `throw new Error(...)` in the action layer with `throw new UserFacingError(...)`. Anything left as a plain `Error` will correctly collapse to "Something went wrong".
+3. Re-run `pnpm foundry:status` — forks that adopted 0.6.0's `result.ts` verbatim stay secure; this is additive.
+
+### Why 0.6.1
+
+Additive and non-breaking. No migration, contract, or script-name changes; only the Foundry-owned error boundary and the strengthened invariant.
+
 ## 0.6.0 — 2026-08-08
 
 **Theme:** Canonical reference app / compatibility harness, with semantic (fork-aware) security invariants.

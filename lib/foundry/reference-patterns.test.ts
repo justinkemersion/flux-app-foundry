@@ -7,6 +7,7 @@ import {
   readReferencePatterns,
 } from "@/scripts/lib/reference-patterns";
 import { REFERENCE_FIXTURE_DIR } from "@/scripts/lib/reference-compat";
+import { readBaselineManifest } from "@/scripts/lib/baseline-manifest";
 
 const root = process.cwd();
 
@@ -33,7 +34,9 @@ describe("reference pattern anchors", () => {
       ]),
     );
     expect(manifest.notProduction).toBe(true);
-    expect(manifest.baselineVersion).toBe("0.6.0");
+    // Tracks the baseline rather than a literal, so a version bump does not
+    // require editing this assertion.
+    expect(manifest.baselineVersion).toBe(readBaselineManifest(root)?.baselineVersion);
   });
 
   it("resolves all pattern anchors into the Foundry tree", () => {

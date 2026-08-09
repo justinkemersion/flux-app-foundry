@@ -1,0 +1,21 @@
+// VULNERABLE fixture — the inherited Foundry template shape.
+// Imports the sanitization symbols (so a presence-only check would pass) yet
+// still returns the raw Error message, leaking FluxHttpError status + body.
+import { ZodError } from "zod";
+import { UnauthorizedError } from "@/lib/flux/errors";
+import { FluxHttpError } from "@/lib/flux/client";
+
+export type ActionResult<T = void> =
+  | { ok: true; data?: T }
+  | { ok: false; error: string };
+
+export function actionError(error: unknown): ActionResult<never> {
+  if (error instanceof UnauthorizedError) {
+    return { ok: false, error: "Unauthorized" };
+  }
+  if (error instanceof ZodError) {
+    return { ok: false, error: "Request failed. Please try again." };
+  }
+  if (error instanceof Error) return { ok: false, error: error.message };
+  return { ok: false, error: "Something went wrong" };
+}

@@ -3,7 +3,7 @@
   "name": "foundry-reference-pattern-anchors",
   "role": "compatibility-canary",
   "notProduction": true,
-  "baselineVersion": "0.6.0",
+  "baselineVersion": "0.6.1",
   "mediaUpload": "deferred \u2014 no canonical baseline pattern",
   "patterns": [
     {

@@ -1,3 +1,5 @@
+// PROTECTED fixture — sanitizes Flux/unknown errors while allowing an explicit,
+// opt-in pass-through for messages the app marked safe via UserFacingError.
 import { ZodError } from "zod";
 import { UnauthorizedError, UserFacingError } from "@/lib/flux/errors";
 import { FluxHttpError } from "@/lib/flux/client";
@@ -6,7 +8,6 @@ export type ActionResult<T = void> =
   | { ok: true; data?: T }
   | { ok: false; error: string };
 
-/** Map thrown errors to safe client-facing messages (no Flux/body leakage). */
 export function actionError(error: unknown): ActionResult<never> {
   if (error instanceof UnauthorizedError) {
     return { ok: false, error: "Unauthorized" };
@@ -15,7 +16,6 @@ export function actionError(error: unknown): ActionResult<never> {
     const first = error.issues[0]?.message;
     return { ok: false, error: first ?? "Invalid input" };
   }
-  // Opt-in pass-through: only messages the app explicitly marked as safe.
   if (error instanceof UserFacingError) {
     return { ok: false, error: error.message };
   }
