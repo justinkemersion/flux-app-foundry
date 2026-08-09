@@ -4,7 +4,7 @@
   "purpose": "Durable compatibility canary for Foundry-supported application patterns. Intentionally boring platform verification — not product UX.",
   "ownership": "Foundry-owned fixture. Documents and validates the template app as the reference subject; do not fork this into a second product app.",
   "subject": ".",
-  "baselineVersion": "0.6.0",
+  "baselineVersion": "0.6.1",
   "docs": [
     "fixtures/reference-app/README.md",
     "fixtures/reference-app/patterns.json",
