@@ -5,7 +5,7 @@
   "name": "flux-app-foundry",
   "source": {
     "repository": "https://github.com/justinkemersion/flux-app-foundry",
-    "commit": "2f9e09926fdb30d44b9b18b3496a1b7fd9dd86b5",
+    "commit": "e818c6e0b9f7d87c8d708e08ae12b46890bfd35b",
     "ref": "main"
   },
   "fluxSurface": {
@@ -126,10 +126,10 @@
     "fixtures/reference-app/domain/public-routes.ts": "00f35785f3dd27edd3a1c9163b6fd02586519c37b64dcecd025a7d51af327111",
     "fixtures/reference-app/domain/session.ts": "fc5e06242ba196f7d2bbe51546a16fd8b37c2d8bfeabed9018e876112ef717d7",
     "fixtures/reference-app/domain/validation.ts": "5a7ea1d8a3f6bd9f9aab161890076ee090d07ddbb571e594339a6ed795076c60",
-    "fixtures/reference-app/manifest.json": "70a9a1e9c6e4bc3ffcb59adf357e96fe7ba5ad06d06e135470db6fae45073e2c",
+    "fixtures/reference-app/manifest.json": "f3c5ecaeb22d02e960161e67109471cbe1663326cb705f60b1f1e3a8d5f956f9",
     "fixtures/reference-app/negative/browser-flux-bad.fixture.ts.txt": "0aaa1386f6ebaf033638b28576a850b1d53dcae2692cd18acf042cbcf7485a2d",
     "fixtures/reference-app/negative/cross-tenant-child.fixture.sql.txt": "06740e165c90fedc4c7065513d1ae393dd2ce966f04056311d5bc0b704ecd3c6",
-    "fixtures/reference-app/patterns.json": "4eb29a60fd354376eb5e6f9c2968693f51d9967f1f17e1e45dac7e4d8d3017d8",
+    "fixtures/reference-app/patterns.json": "50fd2658138b8d0dadc68e7ee463f640610a0c0a96e7a8bd20f8ff8331ce3ef8",
     "fixtures/reference-app/security/0004_vulnerable_child.sql.txt": "b596bd9d2b1b06fa97e8b89367d2fa276f2d63adeb0628f22545ae59077f03e8",
     "fixtures/reference-app/security/0007_owner_user_id_ownership.sql.txt": "fb129f966543fcd26d19d39a1e01727e1d188931bc733c8b3574c8edab6380ea",
     "fixtures/reference-app/security/0009_helper_delegated_ownership.sql.txt": "06e973aab3b6025972a9fffc125c5fed6faaf2815d4e5f145a6fb354be846812",
