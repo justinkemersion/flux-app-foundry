@@ -1043,3 +1043,151 @@ synthetic-owner harness, run as a single file — never the aggregate `pnpm test
    `GET /archive` (public) added none. All the affected files are untouched by the four deployed
    commits. The redirect is correct and no data is served, so this is log noise plus a latent
    robustness defect.
+
+### `yeast-coast-2` pre-gate — recorded before push
+
+| Field | Value |
+| --- | --- |
+| pre-push app SHA | `67f137541e4170a689478988f6a4c98efb184051` (local `main` == `origin/main`) |
+| working tree | clean (0 entries) |
+| project / tenant | `yeast-coast-2`, hash `9348482`, `v2_shared`, Active/Running |
+| API schema | `t_afe050baa154_api` |
+| engine | PostgreSQL 16.13 — satisfies the `>= 15` requirement for column-scoped `ON DELETE SET NULL` |
+| remote ledger | healthy: 24 applied, 2 pending |
+| target migrations | `0026_harden_child_record_ownership.sql`, `0027_harden_child_parent_authorization.sql` |
+| RLS | enabled and forced on 25/25 tables, all owned by `t_afe050baa154_ddl` |
+
+Unlike `noisydesign`, the ledger here is intact, so the normal **directory push** was the correct
+mechanism and applied exactly the two pending files with checksum verification
+(`Done. 2 applied, 24 skipped`).
+
+### The composite-FK integrity precheck could not be run as specified — reported, not faked
+
+The pre-push read-only integrity queries **returned zero violations, and that result was worthless.**
+The temp credential `flux_temp_ro_9348482_01a6dbd2` has `rolbypassrls = false`, `rolsuper = false`,
+and is a member of `flux_tenant_9348482_ro` only — while every policy in the schema targets
+`authenticated` or the tenant role. No policy applies to it, so **it sees 0 rows in every table**.
+`pg_stats` is filtered by the same rule and `pg_statistic` is `permission denied`. Read/write access
+is disabled platform-wide (`FLUX_DB_ACCESS_ALLOW_READWRITE` unset), so there was no credential
+available that could see the rows.
+
+The statistics collector (`pg_stat_all_tables`, not RLS-filtered) proved the tables were **not**
+empty, which is what made the vacuous result detectable:
+
+| table | live rows | relevance |
+| --- | --- | --- |
+| `variant_ingredients` | 83 | owned edge |
+| `brew_log_entries` | 23 | owned edge |
+| `media_assets` | 14 | composite FK target |
+| `brew_log_media` | 7 | new composite FK |
+| `recipe_variants` | 7 | new `hero_media_id` composite FK |
+| `recipe_families` | 5 | new `hero_media_id` composite FK |
+| `variant_media` | 4 | new composite FK |
+| social tables | 0 | — |
+
+`reltuples` / `relpages` were useless here as a cross-check: four of those tables report
+`reltuples = -1` with `relpages = 0` because they have never been analyzed.
+
+Decision: proceed on the transactional guarantee. Pooled push runs user SQL inside a transaction
+(`SET LOCAL ROLE` / `SET LOCAL search_path` only take effect in one, and unqualified names
+demonstrably resolve in the tenant schema), so a composite FK that found cross-owner rows would abort
+`0027` atomically — no partial state, no data modified, nothing weakened — and name the constraint.
+
+**Both migrations applied cleanly, which retroactively supplies the missing proof.**
+`ALTER TABLE ... ADD CONSTRAINT` validates every existing row, so its success against 4 + 7 + 7 + 5
+real rows is direct evidence from the database that **zero cross-owner references existed** — a
+stronger guarantee than the query that was blocked. No production data was inspected to get it.
+
+Tracked as a platform follow-up: there is no supported way to run a read-only integrity audit against
+a v2_shared tenant, because the audit credential is subject to the tenant's own RLS.
+
+### NOISYDESIGN / YEAST-COAST-2 status
+
+| | `noisydesign` | `yeast-coast-2` |
+| --- | --- | --- |
+| status | **RELAUNCHED** | **RELAUNCHED** |
+| deployed app SHA | `6b11d9ca4a40418c4cea52a1aedb18c9b7ea2c3d` | `67f137541e4170a689478988f6a4c98efb184051` |
+| previous deployed SHA | `8b78bd2` (2026-06-15) | `e4ac8ea` |
+| migrations applied | `0017`, `0018` | `0026`, `0027` |
+| tenant / schema | `5ff9c19` / `t_f361c4681136_api` | `9348482` / `t_afe050baa154_api` |
+| ledger | 2 applied, each once | 26 applied, each once |
+| synthetic attack result | 14/14 rejected | 18/18 rejected |
+| legitimate-write result | 8/8 accepted | 10/10 accepted |
+| public smoke | all routes at baseline, no 5xx | 12 public 200, 5 auth 307, no 5xx |
+| cleanup | 0 residual rows | 0 residual rows |
+| static regression suites | 63/63 | 70/70 |
+
+### `yeast-coast-2` database state verified after push
+
+- All five constraints exist with exactly the intended definitions, including
+  `ON DELETE SET NULL (hero_media_id)` on both hero references — confirmed through
+  `pg_constraint.confdelsetcols`, which resolves to `hero_media_id` alone, so the `NOT NULL`
+  `owner_user_id` is untouched.
+- The four superseded single-column media FKs are gone; no orphan constraints.
+- **33/33** write policies on the eleven `owned` tables prove parent ownership.
+- The `visible` tables carry the read-boundary test on INSERT/UPDATE, with deletes deliberately
+  owner-scoped: `recipe_appreciations` / `recipe_saves` on `user_id`, and `recipe_comments` allowing
+  the comment author **or** the recipe owner (moderation).
+- Both new authenticated public SELECT policies exist with predicate
+  `visibility = 'public' AND status = 'published'` — exactly what the visitor policies already serve.
+- **Zero** `WITH CHECK(true)` / `USING(true)` policies; no bridge grant or tenant-role self-grant in
+  any function body.
+
+### `yeast-coast-2` production security smoke — 35/35, synthetic fixtures only
+
+**Owned structure — 10/10 injections rejected** (`403 42501`): `variant_ingredients`,
+`variant_mash_steps`, `variant_stats`, `variant_fermentation_stages`, `variant_media`,
+`recipe_variants` into another brewer's family, `brew_logs`, `brew_log_entries`,
+`brew_log_snapshots`, `collection_recipes`.
+
+**Private media disclosure — 4/4 rejected** (`409 23503`, the composite FKs doing the work):
+linking B's private media into A's public variant, setting `recipe_variants.hero_media_id` and
+`recipe_families.hero_media_id` to B's private asset, and attaching it to A's brew log.
+
+**Social boundary — the distinction that mattered.** The same four actions were accepted against a
+published public parent and rejected against a private one:
+
+| action | public parent | private parent |
+| --- | --- | --- |
+| comment on another brewer's recipe | 201 | 403 `42501` |
+| comment on another brewer's variant | 201 | — |
+| appreciate | 201 | 403 `42501` |
+| save | 201 | 403 `42501` |
+| collect into own collection | 201 | 403 `42501` |
+
+This confirms child write authorization tracks the parent's **read** boundary rather than universal
+parent ownership, so the cross-brewer social product still works.
+
+**Public confidentiality.** Private media owned by A could not be referenced through public content
+owned by B (both the `variant_media` link and the `hero_media_id` route rejected `409 23503`), and an
+anonymous visitor request for that asset returned zero rows.
+
+**Legitimate owned writes — 5/5 accepted**, plus public browsing: visitor reads the published family,
+cannot read the private one, and an authenticated non-owner can now read a published recipe through
+the `0027` public SELECT policy — the gap that previously made `recipe_comments_public_select` and
+`collection_recipes_public_select` unmatchable for non-owners.
+
+### `yeast-coast-2` app smoke
+
+12 public routes returned 200 (`/`, `/recipes`, `/brewers`, `/collections`, `/community`, `/search`,
+`/styles`, `/ingredients`, `/learn`, `/tools`, `/about`, `/login`); 5 authenticated routes returned
+307. A real published recipe page (`/recipes/prost-coast-pale-ale`) renders at 43 KB with media
+references intact, so hero/media rendering survives the composite FKs. Container healthy,
+`RestartCount = 0`. No `t_afe050baa154`, `PGRST*`, `permission denied`, `42501` or `23503` text in
+any public HTML.
+
+The only log entries are 6 `UnauthorizedError: Unauthorized` — the app's intentional fail-closed auth
+helper. Correlated by controlled experiment: one unauthenticated `GET /app/notifications` moved the
+count 5 → 6 and returned 307, while `GET /styles` added none. No 5xx was served.
+
+## Both previously confirmed live vulnerabilities are now CLOSED IN PRODUCTION
+
+1. **Class B public content injection** (`noisydesign`, `yeast-coast-2`) — closed. 32 distinct
+   cross-parent write classes were attempted against the live schemas across both apps and **all 32
+   were rejected**, while 18 legitimate owner writes and 5 legitimate cross-owner social
+   interactions succeeded.
+2. **Inherited Foundry `notes` / `record_tags` child-ownership defect** — closed in both apps by
+   `0017` / `0026`. This had **not** been applied to `noisydesign` production before this stage;
+   pre-gate introspection found its write policies still authorizing on `child.user_id` alone.
+
+Stopping here as instructed. No other application was migrated or deployed.
