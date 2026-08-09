@@ -842,3 +842,85 @@ gap already tracked as Flux #8, 2 and 3 are app defects, 4 is defence in depth.
 **The fleet audit set is now complete for every live project with a local checkout.** `the-shelf`
 and `yeastcoast` still have none, so the fleet gate cannot claim total coverage until that is
 resolved.
+
+## Stage 10 — application relaunch: `noisydesign`, `yeast-coast-2` (2026-08-09)
+
+Scope is exactly these two apps. No other project is migrated or deployed in this stage.
+
+### Toolchain correction found before any write
+
+The globally installed `flux` binary (`~/.local/share/pnpm/bin/flux`) is a shim onto
+`packages/cli/dist/index.cjs`, built `2026-08-08 08:26`. The pooled-push correctness fix
+(`460a4aa`, "make pooled push SQL adaptation lexically aware", PR #7) landed `2026-08-08 17:13`.
+**The installed binary therefore predates the fix and still rewrites `authenticated` by plain regex
+over the whole file** — including comments, string literals and PL/pgSQL bodies. Both migrations in
+this stage carry `authenticated` in header comments, and `noisydesign`'s applied `0014` contains the
+exact `execute format('grant authenticated to %I', tenant_role)` case that the buggy adapter turned
+into a tenant-role self-grant.
+
+Every push and probe in this stage is therefore driven through source, not the shim:
+
+```
+/home/justin/Projects/flux/node_modules/.bin/tsx \
+  /home/justin/Projects/flux/packages/cli/src/index.ts <cmd>
+```
+
+`@flux/core` resolves to `src/` (`main: src/index.ts`, all `exports` point at `./src/*.ts`), so a
+source run picks up the corrected adapter with no build step. Verified before use:
+`packages/core/src/pooled-push-sql-adapt.test.ts` — **23/23 pass**, including "leaves dynamic SQL
+string contents unchanged" and "leaves dollar-quoted bodies unchanged".
+
+Follow-ups recorded, neither release-blocking:
+- The stale global shim should be rebuilt or removed so the corrected path is the default.
+- `printSingleFilePushPreview` (`packages/cli/src/lib/migrations-output.ts:152`) prints
+  "Single-file push (raw SQL, not recorded in flux.flux_migrations)" **unconditionally**, ignoring
+  `--mode`. With `--mode versioned` the apply path really does go through `pushMigrationFile` and
+  record a checksummed ledger row (`commands/push.ts:242`). The preview message is wrong, not the
+  behaviour.
+
+### `noisydesign` pre-gate — recorded before push
+
+| Field | Value |
+| --- | --- |
+| pre-push app SHA | `6b11d9ca4a40418c4cea52a1aedb18c9b7ea2c3d` (local `main` == `origin/main`) |
+| working tree | clean (0 entries) |
+| project / tenant | `noisydesign`, hash `5ff9c19`, `v2_shared`, Active/Running |
+| API schema | `t_f361c4681136_api` |
+| engine | PostgreSQL 16.13 |
+| table ownership | all 17 tables owned by `t_f361c4681136_ddl` (DDL-owner separation intact) |
+| RLS | `rls_enabled = t` and `force_rls = t` on all 17 tables |
+| remote ledger | **0 applied** — `flux.flux_migrations` is empty |
+| applied in reality | `0001`–`0016` (verified by policy inventory, 131 live policies) |
+| target migrations | `0017_harden_child_record_ownership.sql`, `0018_harden_child_parent_authorization.sql` |
+| timestamp | 2026-08-09T09:30:26Z |
+
+### Two pre-gate deviations, both resolved by evidence before proceeding
+
+**1. The remote ledger is empty, so a directory push would replay all 25 migrations.**
+`flux push sql/migrations --plan` reports `Plan. 25 would apply, 0 in ledger`, and the CLI itself
+warns "Migration ledger is empty for this project; existing tables may be from raw/repeatable push
+or pre-ledger applies." Replaying is forbidden by this stage's safety rules and is genuinely unsafe
+here (`0014` re-runs tenant-role grant logic). Resolved by direct introspection rather than by
+trusting the ledger: `0001`–`0016` are applied, and `0018` is definitively **not** applied because
+neither constraint it adds (`tags_id_user_id_key`, `photo_tags_tag_id_user_id_fkey`) exists.
+
+Decision: apply each pending file with a **single-file versioned push** (`--mode versioned`), which
+applies exactly that file and records one checksummed ledger row, leaving `0001`–`0016` untouched.
+The residual gap — `0001`–`0016` remain unrecorded, so a future directory push still sees them as
+pending — is pre-existing and is **not** papered over here. Flux has no supported
+baseline/mark-applied command; inventing one by hand-writing ledger rows was rejected. Tracked as a
+Flux-core follow-up.
+
+**2. `0017` is also unapplied — production was missing two security migrations, not one.**
+`notes_insert`, `notes_update`, `record_tags_insert` and `record_tags_update` in the live schema
+check only `(request.jwt.claims->>'sub') = user_id`, with no parent `exists (...)` clause. The
+inherited Foundry `notes` / `record_tags` child-ownership defect was therefore **still open in
+`noisydesign` production**, alongside the Class B injection that `0018` closes. All 18 write
+policies across the eight `0018` target tables likewise showed `has_parent_check = false`,
+independently re-confirming the live Class B exposure at pre-gate time.
+
+`yeast-coast-2` shows the same pattern: its ledger is healthy (24 recorded) with exactly two pending
+files, `0026_harden_child_record_ownership.sql` and `0027_harden_child_parent_authorization.sql`.
+
+Both extra migrations are already-merged security work and are required to reach merged `main`, so
+both are in scope for this stage.
