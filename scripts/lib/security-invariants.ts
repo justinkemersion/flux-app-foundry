@@ -284,23 +284,45 @@ function fluxAccessChecks(root: string): SecurityCheck[] {
   ];
 }
 
+/**
+ * A generic `instanceof Error` branch that returns the raw `.message` to the
+ * client. This is the inherited template defect: `FluxHttpError` embeds the Flux
+ * status line and response body in its message, so the branch leaks Flux
+ * internals into the browser.
+ *
+ * Deliberately does not match narrowings to a specific subclass, so an opt-in
+ * `UserFacingError` pass-through stays legal.
+ */
+const GENERIC_ERROR_MESSAGE_LEAK =
+  /instanceof\s+Error\b[^{]*\)\s*\{?\s*return\s*\{[^}]*\berror:\s*\w+\.message/;
+
+/** Pure form of {@link actionErrorCheck} so fixtures can exercise it directly. */
+export function classifyActionErrorSource(src: string): {
+  status: SecurityCheckStatus;
+  detail: string;
+} {
+  if (GENERIC_ERROR_MESSAGE_LEAK.test(src)) {
+    return {
+      status: "fail",
+      detail: "actionError returns a raw Error message to the client (leaks Flux detail)",
+    };
+  }
+  const sanitizes =
+    src.includes("FluxHttpError") &&
+    src.includes("Request failed. Please try again.") &&
+    src.includes("Unauthorized");
+  return sanitizes
+    ? { status: "pass", detail: "actionError sanitizes Unauthorized/Flux/generic errors" }
+    : { status: "fail", detail: "actionError missing fail-closed sanitization patterns" };
+}
+
 function actionErrorCheck(root: string): SecurityCheck {
   const path = join(root, "lib/actions/result.ts");
   if (!existsSync(path)) {
     return check("action-errors-no-leak", "fail", "lib/actions/result.ts missing");
   }
-  const src = readFileSync(path, "utf8");
-  const ok =
-    src.includes("FluxHttpError") &&
-    src.includes("Request failed. Please try again.") &&
-    src.includes("Unauthorized");
-  return check(
-    "action-errors-no-leak",
-    ok ? "pass" : "fail",
-    ok
-      ? "actionError sanitizes Unauthorized/Flux/generic errors"
-      : "actionError missing fail-closed sanitization patterns",
-  );
+  const verdict = classifyActionErrorSource(readFileSync(path, "utf8"));
+  return check("action-errors-no-leak", verdict.status, verdict.detail);
 }
 
 function authHelperCheck(root: string): SecurityCheck {

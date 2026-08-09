@@ -8,7 +8,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { evaluateSqlSecurity } from "@/scripts/lib/security-invariants";
+import {
+  classifyActionErrorSource,
+  evaluateSqlSecurity,
+} from "@/scripts/lib/security-invariants";
 import { buildSqlModel, ownershipColumns } from "@/scripts/lib/sql-policy-analysis";
 import { classifyFluxAccess } from "@/scripts/lib/flux-access-analysis";
 
@@ -156,5 +159,34 @@ describe("audit patterns from the fleet sweep are distinguishable", () => {
         /0006/,
       );
     }
+  });
+});
+
+describe("action error sanitization is judged by shape, not by imports", () => {
+  it("fails a file that imports the sanitizers but still returns a raw Error message", () => {
+    const verdict = classifyActionErrorSource(fixture("action-error-leaks.fixture.ts.txt"));
+    expect(verdict.status).toBe("fail");
+    expect(verdict.detail).toMatch(/raw Error message/);
+  });
+
+  it("passes an explicit UserFacingError pass-through", () => {
+    const verdict = classifyActionErrorSource(
+      fixture("action-error-user-facing.fixture.ts.txt"),
+    );
+    expect(verdict.status).toBe("pass");
+  });
+
+  it("distinguishes the two shapes", () => {
+    expect(classifyActionErrorSource(fixture("action-error-leaks.fixture.ts.txt")).status).not.toBe(
+      classifyActionErrorSource(fixture("action-error-user-facing.fixture.ts.txt")).status,
+    );
+  });
+
+  it("fails a file missing sanitization entirely", () => {
+    expect(
+      classifyActionErrorSource(
+        "export function actionError(e: unknown) { return { ok: false, error: 'x' }; }",
+      ).status,
+    ).toBe("fail");
   });
 });

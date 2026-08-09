@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { ZodError } from "zod";
-import { UnauthorizedError } from "@/lib/flux/errors";
+import { UnauthorizedError, UserFacingError } from "@/lib/flux/errors";
 import { FluxHttpError } from "@/lib/flux/client";
 import { actionError } from "./result";
 
@@ -39,6 +39,20 @@ describe("actionError", () => {
       ok: false,
       error: "Something went wrong",
     });
+    spy.mockRestore();
+  });
+
+  it("passes through a UserFacingError message the app marked safe", () => {
+    expect(actionError(new UserFacingError("Alt text is required"))).toEqual({
+      ok: false,
+      error: "Alt text is required",
+    });
+  });
+
+  it("still sanitizes a FluxHttpError even when it carries a readable message", () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const result = actionError(new FluxHttpError("Flux 409 /notes: duplicate key", 409, "dup"));
+    expect(result).toEqual({ ok: false, error: "Request failed. Please try again." });
     spy.mockRestore();
   });
 });
