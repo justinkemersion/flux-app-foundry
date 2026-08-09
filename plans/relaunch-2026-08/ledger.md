@@ -924,3 +924,122 @@ files, `0026_harden_child_record_ownership.sql` and `0027_harden_child_parent_au
 
 Both extra migrations are already-merged security work and are required to reach merged `main`, so
 both are in scope for this stage.
+
+### NOISYDESIGN — RELAUNCHED (2026-08-09)
+
+Both migrations applied, both live vulnerabilities closed, app deployed to merged `main`, smoke clean.
+
+| Field | Value |
+| --- | --- |
+| deployed app SHA | `6b11d9ca4a40418c4cea52a1aedb18c9b7ea2c3d` (host checkout clean, `main`) |
+| previous deployed SHA | `8b78bd21bab017d06d6f5390dbabbfd49fe32aa0` (2026-06-15) |
+| migrations applied | `0017_harden_child_record_ownership.sql`, `0018_harden_child_parent_authorization.sql` |
+| tenant / schema | `noisydesign` `5ff9c19` / `t_f361c4681136_api` |
+| ledger after push | 2 applied, each exactly once, distinct checksums (`62de637ba03d…`, `9eeaca544cfb…`) |
+| synthetic attack result | 14/14 cross-parent write classes **rejected** |
+| legitimate-write result | 8/8 owner writes **accepted** |
+| public smoke result | visitor reads published content, 0 foreign child rows on victim pages |
+| cleanup | 0 residual rows — verified by re-querying all 12 tables for both synthetic subs |
+| deploy method | `deploy/relaunch.sh` — git `pull --ff-only` on host + `docker compose up --build -d` (no rsync/scp) |
+
+#### Migration mechanism actually used
+
+`flux push sql/migrations/<file>.sql --mode versioned`, once per file, driven through
+`packages/cli/src/index.ts` under `tsx` so the corrected pooled-push adapter was in effect. The
+directory push was deliberately **not** used, because the empty ledger would have replayed all 25
+files.
+
+#### Database state verified after push
+
+- Both constraints exist with the intended definitions:
+  `tags_id_user_id_key UNIQUE (id, user_id)` and
+  `photo_tags_tag_id_user_id_fkey FOREIGN KEY (tag_id, user_id) REFERENCES tags(id, user_id) ON DELETE CASCADE`.
+- All **24** write policies across the eight target tables now satisfy
+  `all_have_parent_check = true`; `notes` / `record_tags` carry the `0017` parent `EXISTS` clause
+  with `record_id IS NULL` still permitted for standalone notes.
+- **Zero** policies with `WITH CHECK(true)` or `USING(true)` anywhere in the schema.
+- RLS `enabled` and `forced` on 17/17 tables, all owned by `t_f361c4681136_ddl`.
+- All 12 `*_visitor_public_read` SELECT policies intact — the published surface was not narrowed.
+
+#### On the `t_<hash>_role` policy scoping — not a workaround
+
+The 32 policies written by `0017`/`0018` show `roles = {t_f361c4681136_role}` rather than
+`{authenticated}`. This is the **documented v2_shared pooled-push adaptation**, not a hardcoded
+tenant-role bridge: the shared cluster has `anon` / `authenticator` but no global `authenticated`
+role, so `adaptPooledPushSql` rewrites the role in `CREATE POLICY` to the tenant role
+(`pooled-push-sql-adapt.ts:195-216`). The canonical source SQL in git is unchanged and still says
+`to authenticated`.
+
+It is also not a weakening. `authenticator` is the login role and is a member of every tenant role;
+`t_f361c4681136_role` is in turn a member of `authenticated` (established by the already-applied
+`0014`). So the runtime identity is `t_f361c4681136_role`, both policy forms apply to it, and
+scoping directly to the tenant role is *narrower* than scoping to `authenticated`. Confirmed
+empirically: the 8 legitimate owner writes were accepted through the live gateway, which is only
+possible if the new policies apply at runtime.
+
+#### Production security smoke — 27/27, synthetic fixtures only
+
+Run through the real path (gateway → PostgREST → RLS) with HS256 JWTs for two synthetic subs
+(`nd-s10-attacker-<run>`, `nd-s10-victim-<run>`), because platform read/write DB credentials are
+disabled (`FLUX_DB_ACCESS_ALLOW_READWRITE` unset) — a stronger test than a psql simulation.
+
+Rejected (13 by RLS `42501`, 1 by composite FK `23503`):
+
+| Attack | Result |
+| --- | --- |
+| `photo_assets` `kind='display'` → victim public photo (the rendered image) | 403 `42501` |
+| `process_notes` → victim public photo | 403 `42501` |
+| `photo_tags` → victim public photo + attacker tag | 403 `42501` |
+| `photo_tags` → attacker photo + **victim tag** | 409 `23503` (composite FK) |
+| `roll_photos` → victim roll + victim photo | 403 `42501` |
+| `roll_photos` → attacker roll + victim photo | 403 `42501` |
+| `roll_photos` → victim roll + attacker photo | 403 `42501` |
+| `essay_blocks` text → victim public essay | 403 `42501` |
+| `essay_blocks` photo → attacker essay + victim photo | 403 `42501` |
+| `issue_items` → victim issue + attacker photo | 403 `42501` |
+| `issue_items` → attacker issue + victim photo | 403 `42501` |
+| `featured_items` → attacker row referencing victim photo | 403 `42501` |
+| `issues` insert with `cover_photo_id` = victim photo | 403 `42501` |
+| `issues` update setting `cover_photo_id` = victim photo | 403 `42501` |
+
+Accepted, proving the fix is not over-tight: own-photo display asset, own process notes, own
+photo+own tag, own roll+own photo, own essay block, own issue item, own featured item, and setting
+`cover_photo_id` to the caller's own photo.
+
+Visitor path: the victim's published public photo is still readable, and `photo_assets`,
+`process_notes` and `photo_tags` for it contain **zero** rows owned by anyone else.
+
+#### App smoke
+
+| Check | Pre-deploy | Post-deploy |
+| --- | --- | --- |
+| `/` | 200 | 200 (56 KB, `<title>NoisyDesign</title>`) |
+| `/archive` (public gallery) | 200 | 200 (42 KB) |
+| `/login`, `/signup` | 200 | 200 |
+| `/studio/photos`, `/dashboard`, `/records` | 307 | 307 (fail-closed) |
+| container health | healthy | healthy, `RestartCount = 0` |
+
+Health probe is the container's own `fetch('http://127.0.0.1:3000/')` check — passing. No 5xx on any
+route. Create/update behaviour is covered by the 8 accepted owner writes above, which exercise the
+same PostgREST path the server actions use. No raw Flux/PostgREST detail (`t_f361c4681136`,
+`PGRST*`, `permission denied for`) appears in any public HTML response — and this deploy is the
+first time the `actionError` sanitiser (#4) has actually run in production here.
+
+Targeted live suite `sql/migrations/noisydesign.rls.integration.test.ts` (the app's own audited
+synthetic-owner harness, run as a single file — never the aggregate `pnpm test`): **10/11 pass.**
+
+#### Two pre-existing defects found, neither a regression and neither release-blocking
+
+1. **`resolve_unlisted_photo` is broken by platform-applied `FORCE RLS`.** This is integration case
+   8, the only failure, and it predates this stage. The function is `SECURITY DEFINER` and reads only
+   `photos` — a table **neither** `0017` nor `0018` touches — so it cannot be a regression from this
+   push. `force_rls` subjects even the table owner to RLS, so the definer sees no rows and share-link
+   resolution returns `[]`. Unlisted share links are therefore non-functional in production. It
+   **fails closed**, so it is a functionality gap, not an exposure.
+2. **Unauthenticated dashboard requests log a `TypeError`.** `app/(dashboard)/layout.tsx:16` reads
+   `session.user.id` and the dashboard pages use `session!.user!.id`; when middleware redirects an
+   unauthenticated caller the render still evaluates those assertions. Proven by controlled
+   experiment: one unauthenticated `GET /activity` moved the count 3 → 4 and returned 307, while
+   `GET /archive` (public) added none. All the affected files are untouched by the four deployed
+   commits. The redirect is correct and no data is served, so this is log noise plus a latent
+   robustness defect.
