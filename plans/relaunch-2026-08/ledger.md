@@ -738,8 +738,9 @@ So the only unresolved *inherited* security work is Class C, which is low severi
 rather than by assumption. The release-blocking question now rests on deployment sequencing
 (Stages 7–10), not on undiscovered authorization defects in the audited set.
 
-**Next unevaluated live project: `bloom-atelier`** (v2_shared, 3 tables). It was held back
-deliberately while the two high-severity items were closed, and is now in progress. Two
+**Next unevaluated live project: `bloom-atelier`** — now audited, see the `bloom-atelier` section at
+the end of this ledger. It is `v1_dedicated`, not `v2_shared` as assumed here, and not a Foundry
+fork; its authorization held up under probing and nothing about it blocks relaunch. Two
 live projects behind it still have no local checkout (`the-shelf`, `yeastcoast`), so the fleet gate
 cannot claim complete coverage until that is resolved.
 
@@ -749,3 +750,95 @@ Also carried forward from this pass, both feeding `analyzer_precision`:
 - The analyzer only evaluates tables it classifies as children, so it missed
   `recipe_variants.hero_media_id` and `recipe_families.hero_media_id` — the edges that allowed
   another owner's **private** media to be served publicly, the most severe finding of this pass.
+
+## `bloom-atelier` audit — the last unevaluated live project (2026-08-09)
+
+Read-only audit; the working tree was left untouched (6 untracked files, no tracked modifications,
+level with `origin/main` at `9f91419`). No migration, no deploy, no commit in that repo.
+
+**It is not a Foundry fork.** No `_contract/`, no `foundry.baseline.json`, no `FOUNDRY_BASELINE.md`,
+npm rather than pnpm, migrations under `flux/migrations/`, and no `flux.json` (CLI calls need
+`--hash 61d9dff`). Same category as `percept` and `mailpilot-ai`: a standalone Flux app. Foundry
+invariants therefore do not apply as written, and it cannot be brought under the baseline without a
+separate decision.
+
+**It is `v1_dedicated`, not `v2_shared` as this ledger previously assumed.** So per Flux
+[#8](https://github.com/justinkemersion/Flux/issues/8) there is **no gateway authentication** —
+`GET /` returns 200 with the PostgREST OpenAPI document and RLS is the only access control.
+
+### Test-suite safety, established before running anything
+
+`npm test` is `tsx --test 'src/lib/**/*.test.ts'` over two files. Both are pure unit tests: they
+import only `src/lib/demo/{constants,is-demo-enabled,session}` and `src/lib/atelier-assets`, none of
+which reads a Flux variable, opens a socket, or loads dotenv; the only env touched is
+`AUTH_DEMO_ENABLED`. `tsx --test` does not auto-load `.env` the way Next.js does. Run with
+`FLUX_URL`, `FLUX_GATEWAY_JWT_SECRET` and `FLUX_SERVICE_TOKEN` explicitly unset: **13 pass**.
+
+### Authorization is actually sound — verified, not assumed
+
+Probed through an SSH tunnel with every statement in its own transaction and every transaction
+rolled back; a final count confirmed zero probe rows committed. Tunnel closed and the retrieved
+password file deleted afterwards.
+
+| Probe | Result |
+| --- | --- |
+| anon read `products` | 16 rows — public catalog, intentional |
+| anon read `profiles` / `atelier_images` | **0 / 0** |
+| anon `INSERT` product | **rejected by RLS** |
+| anon `UPDATE` / `DELETE` all products | **0 rows / 0 rows** |
+| anon `INSERT` profile | **rejected by RLS** |
+| foreign sub `INSERT` product owned by another maker | **rejected by RLS** |
+| foreign sub `INSERT` image against another maker | **rejected by RLS** |
+| foreign sub `INSERT` profile for another `auth_id` | **rejected by RLS** |
+| foreign sub `UPDATE` / `DELETE` another maker's product | **0 rows / 0 rows** |
+| foreign sub `INSERT` own product | allowed, by design |
+| shopper visitor sub (`bloom-shopper-anon`) | products 16, images 46, profiles 0 — guest catalog as designed |
+
+**No `mailpilot-ai`-class hole.** All three tables have RLS enabled with policies, there is no
+unauthenticated write primitive, and no cross-owner write of any kind. `atelier_images` even carries
+a composite foreign key (`atelier_images_profile_match_fkey`) binding an image to the owning
+profile — independently the same mechanism used in `noisydesign` `0018` and `yeast-coast-2` `0027`.
+
+### Findings
+
+1. **No `FORCE RLS`, tables owned by `postgres`, and PostgREST connects as `postgres`.** All three
+   tables are `rls=true force=false owner=postgres`, and `pg_stat_activity` shows the only
+   PostgREST connection authenticating as `postgres` — superuser, `bypassrls=true`, and the table
+   owner. Isolation therefore rests entirely on PostgREST issuing `SET ROLE anon`/`authenticated`
+   per request. It does today, which is why the probes above behave correctly, but a single request
+   path that skips `SET ROLE`, or a JWT carrying a `role` claim naming a bypassing role
+   (`postgres`, `service_role` — both `bypassrls=true`), collapses every isolation guarantee at
+   once. Flux's `FORCE RLS` invariant has not been applied: 3 tables qualify and none is forced.
+   This is the same platform gap as Flux #8 — `v1_dedicated` projects get neither gateway auth nor
+   the RLS invariant.
+2. **The Flux JWT is exposed to the browser.** `src/auth.ts` sets `session.fluxJwt = token.fluxJwt`,
+   and `src/app/api/auth/[...nextauth]/route.ts` serves `/api/auth/session`, so a signed-in user's
+   browser can read a working Flux bearer token. Nothing client-side uses it — there is no
+   `SessionProvider` and no client component references `fluxJwt` or `useSession` — so this is
+   gratuitous exposure. With no gateway auth in front of PostgREST, that token permits direct
+   database writes outside all server-side validation. Minting itself is server-only and hardcodes
+   `role: "authenticated"` (`src/lib/flux-jwt.ts`), so the role is not caller-controllable.
+3. **Raw PostgREST error bodies are rendered to users.** `src/lib/flux-fetch.ts` returns
+   `text.slice(0, 280)` or PostgREST's `message` verbatim, and five pages render `loaded.error`
+   straight into the markup (`market`, `studio`, `studio/settings`, `atelier/[slug]`,
+   `atelier/[slug]/product/[productId]`). Confirmed leaky in practice: an unauthenticated probe
+   returned `relation "t_485382535699_api.orders" does not exist`, disclosing the internal tenant
+   schema name. Same class as the inherited `action-errors-no-leak` defect, in a repo that has none
+   of Foundry's protections.
+4. **Policies target `PUBLIC`, not `TO authenticated`, and `anon` holds write grants.** All five
+   policies have `polroles = 0` (PUBLIC), and `anon` has `INSERT, UPDATE, DELETE` on all three
+   tables. Only the policy predicates stop anonymous writes, so there is no defence in depth. The
+   canonical form scopes policies `TO authenticated` and withholds write grants from `anon`.
+5. Hygiene: 6 untracked files in the working tree, including two that look like accidents from a
+   mistyped command (`bloom-atelier@0.1.0`, `tsx`).
+
+### Verdict
+
+**Not release-blocking, and no emergency action taken or needed** — unlike `mailpilot-ai`, there is
+no live unauthenticated write primitive and no cross-tenant read or write. Findings 1–4 are real and
+should be fixed, but they are hardening and defect work rather than an open exposure: 1 is a platform
+gap already tracked as Flux #8, 2 and 3 are app defects, 4 is defence in depth.
+
+**The fleet audit set is now complete for every live project with a local checkout.** `the-shelf`
+and `yeastcoast` still have none, so the fleet gate cannot claim total coverage until that is
+resolved.
