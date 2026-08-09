@@ -474,6 +474,100 @@ What is genuinely wrong, in order:
 4. Stale and unguarded: last commit `2026-05-03`, npm rather than pnpm, no `.github/workflows`,
    non-standard `db/migrations/` path, so no CI and no Foundry baseline.
 
+## STOP-THE-LINE — live unauthenticated write primitive on `mailpilot-ai`
+
+Found by live verification, not by source analysis. **No deployment stage should proceed until
+this is closed.**
+
+`mailpilot-ai` is `v1_dedicated`. Three of its seven `api` tables have **RLS disabled and zero
+policies**, and full DML is granted to `anon`:
+
+```
+relname            | rls | pol | api_grants
+mail_action_log    | f   |   0 | anon: SELECT INSERT UPDATE DELETE TRUNCATE (+ authenticated)
+mail_categories    | f   |   0 | anon: SELECT INSERT UPDATE DELETE TRUNCATE (+ authenticated)
+mail_preferences   | f   |   0 | anon: SELECT INSERT UPDATE DELETE TRUNCATE (+ authenticated)
+```
+
+`PGRST_DB_ANON_ROLE=anon`, and **the gateway does not require authentication for this project**:
+
+```
+GET  https://api--mailpilot-ai--02d83e6.vsl-base.com/mail_categories?limit=1  -> 200 []
+OPTIONS .../mail_categories -> 200
+  allow: OPTIONS,GET,HEAD,POST,PUT,PATCH,DELETE
+```
+
+So an unauthenticated caller on the public internet has read **and write** access to those three
+tables. The tables are currently empty, so nothing is disclosed today, but `INSERT`/`DELETE`/
+`TRUNCATE` are live. No write was attempted against production; the grants, the disabled RLS,
+the `200`, and the advertised methods are sufficient evidence.
+
+### The gateway's fail-closed guarantee is engine-dependent
+
+This is the platform-level root cause, and it invalidates an assumption Stage 7/8 rests on:
+
+| Project | Engine | Unauthenticated `GET` |
+|---|---|---|
+| `percept` | `v2_shared` | **401** |
+| `mailpilot-ai` | `v1_dedicated` | **200** |
+| `yeastcoast` | `v1_dedicated` | **200** |
+
+The 401 canary was only ever run against `v2_shared` projects, so it never covered this.
+
+## `yeastcoast` serves tenant rows unauthenticated
+
+Also `v1_dedicated`, also `200` unauthenticated. Real rows come back, including `user_id`:
+
+```
+GET /recipes?limit=2  -> [{"id":"08616334-…","user_id":"0f724598-…","name":"YeastCoast Heritage Lager",…
+GET /profiles?limit=2 -> [{"id":"a0000000-…","username":"community_beginner",…,"public_code":"y…
+```
+
+All 17 tables have RLS enabled with policies, so this may be an intentional community/public
+read surface — **needs an owner decision, not a unilateral fix.** What is *not* intentional:
+`relforcerowsecurity = 0` on all 17 tables, all owned by `postgres`. Any connection as the owner
+bypasses RLS entirely.
+
+## `FORCE RLS` in app migrations is a false alarm — the platform applies it
+
+A single catalog query over the shared cluster settles a class of findings the analyzer reports
+from source:
+
+```sql
+select n.nspname, count(*) tables, count(*) filter (where c.relrowsecurity) rls_on,
+       count(*) filter (where c.relforcerowsecurity) force_on,
+       count(*) filter (where pg_get_userbyid(c.relowner) like '%\_ddl') ddl_owned
+from pg_class c join pg_namespace n on n.oid = c.relnamespace
+where n.nspname like 't\_%\_api' and c.relkind = 'r' group by 1;
+```
+
+Every `v2_shared` tenant comes back fully `force_on` and `ddl_owned` **even when its own
+migrations never declare `force row level security`** — `percept` (2/2) and `habitat` (16/16)
+both confirm it. Flux provisioning owns this invariant, so flagging its absence in app SQL is
+noise. Two exceptions, below.
+
+## `logos-engine`: RLS is *disabled*, not merely mis-scoped
+
+Sharpens the deferred blocker with production evidence. Schema `t_744b22df8382_api`, 14 of 17
+tables have RLS on; these three do not:
+
+```
+t_744b22df8382_api.ai_runs              rls=f force=f policies=4
+t_744b22df8382_api.translation_layers   rls=f force=f policies=5
+t_744b22df8382_api.translation_variants rls=f force=f policies=5
+```
+
+Each has 4–5 policies defined that are **inert** because RLS is switched off. No runtime role
+holds table grants either, which is consistent with the app being broken in production rather
+than leaking. Still deferred per the standing decision; now documented with specifics.
+
+## Orphaned tenant schema in the shared cluster
+
+`t_b86da057199a_api` maps to **no project** in `flux list` (all 17 are accounted for elsewhere).
+It holds `profiles` and `products`, both owned by `postgres` with `force_rls = f`, and grants no
+privileges to any runtime role — so no PostgREST instance can reach it. Unmanaged residue
+created outside normal provisioning, not an exposure. A Flux-core hygiene item.
+
 ## Live projects absent from the audit set
 
 `flux list` returns 17 running projects; the invariant table above covers 14 of them. Never
