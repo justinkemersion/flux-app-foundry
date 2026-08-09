@@ -495,11 +495,20 @@ Two follow-ups deliberately left open: `001_mailpilot_init.sql` has a **checksum
 the remote ledger (edited `2026-06-17` in `68bd8b1` after being applied `2026-06-03`), which
 blocks directory-mode `flux push` for this project — so `008` went in as a single-file push and is
 not recorded in `flux.flux_migrations`; it is idempotent, so a later recorded re-apply is safe.
-And `mailpilot-ai` CI has been red since `2026-06-19` for unrelated reasons: `ci.yml` runs
-`pip install -e ".[dev]"`/`pytest` at the repo root while the Python project is
-`mailpilot-runner/`, and once that is corrected 15 of 70 tests still fail from a single cause —
-`email_processor.py:425` reads `processed_repo._client`, a private attribute the in-memory test
-doubles do not have.
+CI is now fixed and both PRs are merged (`main` = `9919de8`, green, clean). `mailpilot-ai` CI had
+been red since `2026-06-19` for two independent reasons, resolved in PR #2:
+
+- `ci.yml` ran `pip install -e ".[dev]"`, `ruff`, and `pytest` at the repo root while the Python
+  package is `mailpilot-runner/`. The install failed outright, so **lint and tests never ran**.
+- With that corrected, 15 of 70 tests failed because `process_all_accounts_once` built its
+  preference and action-log repositories from `processed_repo._client`. `ProcessedEmailRepository`
+  now exposes `preferences()` / `action_log()`, so composition stays behind the repository
+  boundary and the in-memory doubles can answer the same calls. The action-log double subclasses
+  the real repository and overrides only `insert_row`, so tests still exercise the real audit-row
+  construction.
+- Three further tests then failed only in CI: they call `get_openai_api_key()`, which loads
+  `.env` first, so locally they consumed a developer's real key. The shared autouse fixture now
+  pins a placeholder, which also guarantees no test can spend a token.
 
 ## Original finding — live unauthenticated write primitive on `mailpilot-ai`
 
@@ -541,7 +550,37 @@ This is the platform-level root cause, and it invalidates an assumption Stage 7/
 
 The 401 canary was only ever run against `v2_shared` projects, so it never covered this.
 
-## `yeastcoast` serves tenant rows unauthenticated
+## `yeastcoast` public reads are an intended feature, correctly built
+
+**Correction.** The unauthenticated `200` responses looked alarming, but reading the live policies
+shows a deliberate, correctly-implemented opt-in sharing model — not a defect:
+
+```
+relname  | polname              | cmd | using / with_check
+recipes  | public_read          | r   | (is_private = false)
+recipes  | owner_read           | r   | (auth.uid() = user_id)
+recipes  | owner_insert         | a   | (auth.uid() = user_id)
+profiles | profiles_public_read | r   | true
+```
+
+`recipes.is_private` has **`column_default = true`, `NOT NULL`**, so recipes are private on
+creation and only become world-readable when the owner opts in. The "YeastCoast Heritage Lager"
+row returned earlier was published on purpose.
+
+**There is no write exposure.** All 23 insert/update policies across the schema are gated on
+`auth.uid() = <owner column>`, so an unauthenticated caller cannot write anything.
+
+Two things remain worth a decision, neither urgent:
+
+1. `profiles_public_read` is `using (true)` — unconditional, with no per-row opt-out unlike
+   `recipes`. It exposes `username`, unit preferences, `default_efficiency`, and `public_code` for
+   every user. Nothing sensitive (no email), and it is named as a public surface, so this is a
+   product choice rather than a bug.
+2. `relforcerowsecurity = 0` on all 17 tables, all owned by `postgres`. RLS is on everywhere with
+   correct policies, so the request path is safe, but an owner-role connection would bypass it.
+   This is the same defense-in-depth gap as `mailpilot-ai` and is covered by Flux issue #8.
+
+## Original observation — `yeastcoast` serves tenant rows unauthenticated
 
 Also `v1_dedicated`, also `200` unauthenticated. Real rows come back, including `user_id`:
 
