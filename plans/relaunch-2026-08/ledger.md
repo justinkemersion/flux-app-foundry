@@ -1191,3 +1191,89 @@ count 5 → 6 and returned 307, while `GET /styles` added none. No 5xx was serve
    pre-gate introspection found its write policies still authorizing on `child.user_id` alone.
 
 Stopping here as instructed. No other application was migrated or deployed.
+
+---
+
+# Stage 10 follow-up — Flux CLI build-artifact boundary hardened
+
+Flux PR [#9](https://github.com/justinkemersion/Flux/pull/9), branch `harden/cli-build-provenance`,
+commit `3fc6cce`. No Flux deploy and no application migration were performed in this task.
+
+## Root cause
+
+The `flux` on PATH is a pnpm global-link shim that `exec node`s
+`/home/justin/Projects/flux/packages/cli/dist/index.cjs` directly — the installed binary **is** the
+repo's build output, so a missed rebuild silently runs the previous commit's logic. Nothing in the
+CLI surface could reveal that: `CLI_VERSION` was a string literal pinned in
+`cli-handlers/cli-version.ts`, so the 08:26 bundle and the 17:13 source both answered `2.0.1`.
+
+Confirmed rather than assumed: the bundle shipped on 2026-08-08 contained **zero** occurrences of
+`scanSqlCodeSpans`, `splitStatements` or `ADP_IN_SCHEMA_PUBLIC` — the identifiers introduced by
+`460a4aa` — while reporting the same version as the fixed source.
+
+## Correction to the Stage 10 assumption
+
+The pooled-push adapter is **not** in the CLI. `adaptPooledPushSql` is imported only by
+`apps/dashboard/src/lib/pooled-push.ts` and `pooled-migrations.ts`, and is provably absent from
+`packages/cli/dist/index.cjs` (0 hits for `adaptPooledPushSql`, `normalizePushSql`,
+`pooled-push-sql-adapt`). The CLI transports SQL unmodified via `client.pushSql`; the **deployed
+control plane** performs tenant-role adaptation.
+
+So the Stage 10 `tsx` workaround did not change which adapter ran — the deployed dashboard adapted
+the SQL either way. Whether Stage 10's pushes were adapted by fixed code is a property of the
+deployed control plane, not of the local CLI. The migrations verified clean in production afterward,
+which is the evidence that matters.
+
+`@flux/core` has no build step (`main: src/index.ts`), so the adapter's compiled home is the
+dashboard's Next build. **Control-plane artifact provenance remains unguarded** — recorded below as
+a follow-up.
+
+## Provenance model
+
+Embedded at build time by `packages/cli/tsup.config.ts` through esbuild `define` into
+`__FLUX_BUILD_PROVENANCE__`: `version` (package.json), `sourceSha` (`git rev-parse HEAD`),
+`sourceDirtyAtBuild` (`git status --porcelain --untracked-files=no`), `buildTimestamp`,
+`buildRepoRoot`. At runtime the CLI compares the embedded commit with the current HEAD of the
+checkout it was built from. No mtime is consulted. `define` is a static substitution, so the
+environment cannot forge provenance — under `tsx` the constant is absent and the runtime reports
+`source`.
+
+| status | meaning | production mutation |
+| --- | --- | --- |
+| `source` | running TypeScript directly | allowed |
+| `verified` | embedded commit equals build repo HEAD, tree clean | allowed |
+| `unverifiable` | provenance present, no build checkout on this machine | allowed |
+| `stale` | commit differs from HEAD, or checkout dirty | **blocked** |
+| `unknown` | no embedded commit, or built from a dirty tree | **blocked** |
+
+## Commands protected
+
+Fail closed: `push` (apply only), `migrate` (non-`--dry-run`), `db-reset`, `db restore`, `nuke`,
+`reap`. Warn and continue: `push --plan`, `push --dry-run`, `migrate --dry-run`, `migrations list`.
+Emergency override `FLUX_ALLOW_STALE_CLI=1` proceeds with a loud warning naming command and status.
+
+## Verification
+
+26 new tests (146 total in `@flux/cli`, 0 failures), `pnpm check:architecture` green, `tsc --noEmit`
+green for `@flux/cli` and `@flux/core`, pooled-push adapter suite 23/23 in `@flux/core`.
+
+Live matrix through the **installed binary**, not tsx:
+
+| state | command | result |
+| --- | --- | --- |
+| built dirty → `unknown` | `flux db-reset` | blocked, exit 1 |
+| clean build, HEAD matches → `verified` | `flux db-reset` | guard passes, normal validation |
+| checkout moved to `460a4aa` → `stale` | `flux push` | blocked, names both SHAs |
+| `stale` | `flux migrations list`, `flux push --plan` | warned, continued |
+| `unknown` + override | `flux db-reset` | warned, proceeded |
+
+Rebuilt CLI: version `2.0.1`, `sourceSha 3fc6ccef47a739e146425f754fd77a3cdc9d117c`, built
+`2026-08-09T10:36:43Z`, `provenanceStatus: verified`.
+
+## Follow-ups opened by this work
+
+- **Control-plane provenance is unguarded.** The deployed dashboard decides pooled-push adaptation;
+  there is no equivalent SHA check or preflight. Highest-value next step for migration safety.
+- Pre-provenance bundles report `unknown` and are refused for production mutation. That is the
+  intended bootstrap behavior, but any other machine running an old `flux` must rebuild once.
+- Still open from Stage 10: single-file `--plan` preview message is mode-blind (cosmetic).
