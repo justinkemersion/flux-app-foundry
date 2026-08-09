@@ -103,8 +103,8 @@ regression. Awaiting a decision rather than regressing them:
 | `casa-panel` | fixed | fixed | pass | app-specific `panels`->`locations` |
 | `roommating` | fixed | fixed | pass | app-specific `household_members`->`households` |
 | `parcelpop` | fixed | **pending** | pass | 1 analyzer `unknown` |
-| `noisydesign` | fixed | **pending** | pass | app-specific `photo_assets`->`photos` |
-| `yeast-coast-2` | fixed | **pending** | pass | app-specific `recipe_variants`->`recipe_families` |
+| `noisydesign` | fixed | fixed (`0018`, merged `6b11d9c`) | pass | app-specific `photo_assets`->`photos` |
+| `yeast-coast-2` | fixed | fixed (`0027`, merged `67f1375`) | pass | app-specific `recipe_variants`->`recipe_families` |
 | `balance` | fixed | **blocked** | pass | app-specific `meal_components`->`meal_entries` |
 
 **Residual `child-row-parent-ownership` failures are app-specific domain pairs, NOT the
@@ -704,12 +704,26 @@ evaluated.
 
 ## Release-blocker position after Class B (2026-08-09)
 
-**Both high-severity public-read child-injection flaws are closed.** `noisydesign` PR
-[#5](https://github.com/justinkemersion/noisydesign/pull/5) and `yeast-coast-2` PR
-[#11](https://github.com/justinkemersion/yeast-coast-2/pull/11) each carry the migration plus a
-static regression test, with the exploit reproduced and then proven rejected on a disposable local
-Postgres. Neither still blocks application relaunch **once merged and pushed to its tenant** —
-both migrations are unpushed, so the live schemas remain vulnerable until Stage 10.
+**Both high-severity public-read child-injection flaws are closed in source: MERGED — MIGRATION
+PENDING.** Each PR carried the migration plus a static regression test, with the exploit reproduced
+and then proven rejected on a disposable local Postgres. Head SHAs and CI were re-verified against
+the exact commit immediately before merging.
+
+| Project | PR | Merged commit on `main` | Migration awaiting Stage 10 push | Live schema |
+| --- | --- | --- | --- | --- |
+| `noisydesign` | [#5](https://github.com/justinkemersion/noisydesign/pull/5) | `6b11d9ca4a40418c4cea52a1aedb18c9b7ea2c3d` | `sql/migrations/0018_harden_child_parent_authorization.sql` | `t_…` v2_shared — **still vulnerable** |
+| `yeast-coast-2` | [#11](https://github.com/justinkemersion/yeast-coast-2/pull/11) | `67f137541e4170a689478988f6a4c98efb184051` | `sql/migrations/0027_harden_child_parent_authorization.sql` | `t_afe050baa154_api` v2_shared — **still vulnerable** |
+
+Merged 2026-08-09 (squash, branches deleted); both local trees clean and level with `origin/main`.
+Nothing was deployed and neither migration has been pushed, so **the running applications remain
+exploitable until Stage 10 applies these two files.** That is now the only thing standing between
+these two apps and a closed finding.
+
+Stage 10 note: `yeast-coast-2`'s `0027` uses `on delete set null (hero_media_id)`, which requires
+Postgres 15+. The v2_shared engine runs `postgres:16`, and the fix was verified on that major
+version locally. Its composite foreign keys will fail loudly if production holds pre-existing
+cross-owner rows; that is intended, and such rows must be inspected and remediated rather than the
+constraint weakened.
 
 Remaining child-ownership blockers, by class:
 
@@ -725,7 +739,7 @@ rather than by assumption. The release-blocking question now rests on deployment
 (Stages 7–10), not on undiscovered authorization defects in the audited set.
 
 **Next unevaluated live project: `bloom-atelier`** (v2_shared, 3 tables). It was held back
-deliberately while the two high-severity items were closed, and is now the front of the queue. Two
+deliberately while the two high-severity items were closed, and is now in progress. Two
 live projects behind it still have no local checkout (`the-shelf`, `yeastcoast`), so the fleet gate
 cannot claim complete coverage until that is resolved.
 
