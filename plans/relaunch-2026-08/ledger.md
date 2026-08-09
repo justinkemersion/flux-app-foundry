@@ -266,3 +266,94 @@ pending a decision.
 5 (baseline adoption — note `parcelpop` has no `foundry.baseline.json` at all), 7 (gate),
 8 (Flux deploy), 9 (live verify on a brand-new disposable tenant), 10 (app relaunch),
 11 (final sweep).
+
+---
+
+## Fleet security audit — re-run 2026-08-08 against `origin/main` of every fork
+
+Method: throwaway `git worktree` per repo at `origin/main`, analyzer run against those trees.
+This avoids reading stale local checkouts and leaves dirty/diverged working trees untouched.
+Fork set derived by presence of `lib/flux/client.ts` (15 repos, including Foundry itself).
+
+### Two repos were not in the previous picture at all
+
+- **`percept`** — a Foundry fork that had never been audited. `action-errors-no-leak` fails
+  because `lib/actions/result.ts` is *absent*, `fail-closed-auth-helper` fails ("no fail-closed
+  auth helper found"), and `lib/flux/client.ts` references `NEXT_PUBLIC_FLUX_*`. It has no
+  tenant SQL the analyzer can evaluate.
+- **`casa-panel`** — local `main` had **diverged**: 1 unpushed local commit
+  (`3309e75 fix(auth,shell): stale JWT sessions and sidebar active state.`) against 3 unpulled
+  remote commits (the security + CI work merged earlier). Left untouched; needs an owner
+  decision before anything else happens in that repo.
+
+### Newly proven scope: child-ownership on app-specific tables
+
+The earlier fleet fix covered the **inherited** `notes` / `record_tags` pair from
+`0004_core_entities.sql`. The analyzer, run with full notes rather than just the first
+finding, shows the same defect class on **app-authored** parent/child tables that were never
+in scope:
+
+| Repo | proven policy FAILs | REVIEW | example |
+|---|---|---|---|
+| `habitat` | 132 | 44 | (deferred, dirty) |
+| `theshelf` | 58 | 20 | (deferred, dirty) |
+| `yeast-coast-2` | 58 | 39 | `recipe_variants.family_id -> recipe_families` |
+| `noisydesign` | 54 | 36 | `photo_assets.photo_id -> photos`, `roll_photos.roll_id -> rolls` |
+| `casa-panel` | 36 | 12 | `panels/panel_sections/modes/rules/house_notes` |
+| `balance` | 27 | 9 | `meal_components`, `saved_meal_components`, `recipe_ingredients`, `routine_*` |
+| `flux-control-room` | 15 | 5 | (deferred, dirty) |
+| `roommating` | 15 | 5 | `household_members.household_id -> households` |
+| `logos-engine` | 13 | 12 | (deferred, by decision) |
+
+Counts are per policy (insert/update/delete), so distinct table→parent links are roughly a
+third of each number. Verified against source, not taken on trust:
+`meal_components.meal_entry_id references meal_entries` with
+`meal_components_insert ... with check ((jwt.sub) = user_id)` only, and
+`photo_assets.photo_id references photos` likewise. These are real, not analyzer artifacts.
+
+Exploit shape: an authenticated caller inserts a child row carrying **their own** `user_id`
+but a `parent_id` belonging to another tenant. Reads stay filtered by `user_id`, so this is
+not a direct read breach, but it lets a caller inject rows under another tenant's parent —
+and app read paths fetch children by `parent_id` for the parent's owner, so injected rows can
+surface in the victim's UI. Cross-tenant integrity, release-blocking class.
+
+### `lighthouse` UNKNOWNs are an analyzer limitation, not a defect
+
+`lighthouse` shows 0 FAIL and 140 REVIEW. Its policies delegate to
+`lighthouse_is_org_member(organization_id)` / `lighthouse_has_org_role(...)` helper functions
+(`0006`, `0010`, `0039`), which the analyzer cannot resolve through a function body. The
+org-membership model is arguably stronger than per-row `user_id`. `living-language` (4) and
+`parcelpop` (27) REVIEWs are the same shape. These should be confirmed by reading the helpers,
+but they are **not** in the proven-failure class above.
+
+### `balance` action-error gap closed
+
+`balance`'s `lib/actions/result.ts` was still the vulnerable template — the earlier ledger
+implied a PR existed, and none did. That is the *inherited* defect and squarely in the
+sanctioned Stage 4 scope, so it was fixed the same way as the other forks (PR #5, 13 domain
+throws converted to `UserFacingError`).
+
+### Current invariant state on `origin/main`
+
+| Repo | tenant-rls | child-own | browser-access | browser-secrets | action-errors | auth-helper |
+|---|---|---|---|---|---|---|
+| `flux-app-foundry` | PASS | PASS | PASS | PASS | PASS | PASS |
+| `vessel-ledger` | PASS | PASS | PASS | PASS | PASS | PASS |
+| `parcelpop` | unknown | PASS | PASS | PASS | PASS | PASS |
+| `living-language` | unknown | PASS | PASS | PASS | PASS | PASS |
+| `lighthouse` | unknown | unknown | PASS | PASS | PASS | PASS |
+| `balance` | PASS | **FAIL** | PASS | PASS | PASS (PR #5) | PASS |
+| `noisydesign` | PASS | **FAIL** | PASS | PASS | PASS | PASS |
+| `yeast-coast-2` | unknown | **FAIL** | PASS | PASS | PASS | PASS |
+| `roommating` | PASS | **FAIL** | PASS | PASS | PASS | PASS |
+| `casa-panel` | PASS | **FAIL** | PASS | PASS | PASS | PASS |
+| `percept` | unknown | unknown | PASS | **FAIL** | **FAIL** | **FAIL** |
+| `flux-control-room` | PASS | **FAIL** | PASS | **FAIL** | **FAIL** | PASS |
+| `habitat` | PASS | **FAIL** | PASS | **FAIL** | **FAIL** | PASS |
+| `theshelf` | PASS | **FAIL** | PASS | **FAIL** | **FAIL** | PASS |
+| `logos-engine` | **FAIL** | **FAIL** | PASS | **FAIL** | **FAIL** | PASS |
+
+Stage 7's gate cannot honestly pass while the app-specific child-ownership failures stand.
+Escalated rather than improvised: remediating ~130 table→parent links across 9 repos is a
+cross-repo security program, not a finishing step, and `plans/` discipline forbids inventing
+it unilaterally.
