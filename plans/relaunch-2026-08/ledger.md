@@ -4,7 +4,7 @@ Rewritten on every loop iteration. **Historical entries are evidence, not author
 Every value below was produced by a read-only check at the time shown; re-run the check
 before acting on it.
 
-Last updated: 2026-08-08, end of iteration 1.
+Last updated: 2026-08-09 — control-plane deploy `dc3e325`; migration infrastructure READY.
 
 ## Operating notes learned this iteration
 
@@ -1289,12 +1289,12 @@ transports SQL unmodified and the deployed control plane adapts it.
 | Control | Status | Evidence |
 | --- | --- | --- |
 | CLI artifact provenance | **CLOSED** | Flux [#9](https://github.com/justinkemersion/Flux/pull/9), merged `16a8224` |
-| Control-plane artifact provenance | **CLOSED in code**, pending deploy | Flux [#10](https://github.com/justinkemersion/Flux/pull/10), `ff82da0` |
+| Control-plane artifact provenance | **CLOSED IN PRODUCTION** | Flux [#10](https://github.com/justinkemersion/Flux/pull/10) + [#11](https://github.com/justinkemersion/Flux/pull/11), deployed `dc3e325` 2026-08-09 |
+| Migration infrastructure | **READY** | `flux control-plane verify` → READY; disposable-tenant pooled-push smoke passed |
 
-Control-plane provenance is closed as a *contract, guard and test suite*; it is not yet in effect
-in production, because this task was explicitly not authorized to deploy Flux. Until the control
-plane is deployed, `flux control-plane verify` returns NOT READY and `flux push` refuses pooled
-production migrations — the intended fail-closed state, not a defect.
+Both halves of the boundary are now verified in production. `flux control-plane verify` returns
+READY and also satisfies the stricter `--require-sha-match`, because the deployed control plane
+and the operator checkout are the same commit.
 
 ## Where control-plane provenance was lost (8 gaps)
 
@@ -1369,20 +1369,137 @@ Both statements stand, and they are different claims:
   UNKNOWN, and the adapter generation is now known to have been the pre-fix one. Stage 10's
   correctness rests on direct verification of the outcome, not on artifact identity.
 
-## Phase 8 — not deployed
+## Phase 8 — control-plane deploy, executed 2026-08-09
 
-No Flux deploy and no application migration were performed. Deployment plan, including a
-disposable-tenant pooled-push smoke that exercises `TO authenticated` in executable SQL alongside
-the same token in a comment and a dollar-quoted body, is in `docs/CONTROL-PLANE-PROVENANCE.md`.
+Web control plane only. The gateway, data plane and every application were left untouched:
+`flux-node-gateway`, `flux-postgres-v2`, `flux-postgrest-pool` and `flux-pgbouncer` all kept their
+original `StartedAt` and `RestartCount=0`; only `flux-web` was recreated.
+
+| Field | Value |
+| --- | --- |
+| Deployed Flux SHA | `dc3e325866ccae6eea2acc76ebf1d4d2363a2777` |
+| Image tag | `flux-web:dc3e325866ccae6eea2acc76ebf1d4d2363a2777` (id `6a484041ba18`, also `:latest`) |
+| Build timestamp | `2026-08-09T11:32:59Z` |
+| Runtime `/api/health` | `provenanceStatus: established`, `sourceSha` = deployed SHA, `dirtyAtBuild: false`, `version 0.1.0` |
+| Adapter contract | `2.0.0` (digest-pinned to `pooled-push-sql-adapt.ts`) |
+| Gateway contract | `1.0.0` |
+| `flux control-plane verify` | **READY** (exit 0); also passes `--require-sha-match` |
+| CLI provenance | `verified`, built from `dc3e325866cc`, matches checkout |
+
+**Rollback identity, recorded before cutover.** Server checkout `/srv/platform/flux` was at
+`6ab8984` (clean, `main`); `flux-web` ran image `a01fe4f10177` via the mutable `flux-web:latest`,
+started `2026-08-08T15:30:17Z`, `RestartCount=0`. That image was tagged
+**`flux-web:rollback-6ab8984`** first, because `:latest` moving would have left it dangling and
+the deploy's `docker image prune -f` would have destroyed the only rollback target. Future deploys
+do not need this step — every build now carries an immutable `flux-web:<sha>` tag.
+
+**`6ab8984` independently confirms Phase 7's read-only bracketing.** It is the commit immediately
+preceding `460a4aa` (Flux #7), which the docs-fingerprint method had already concluded. Two further
+confirmations followed: the pre-fix adapter's distinguishing regex (`([^;]*?\bON\s+SCHEMA`) appears
+8× in the rollback image and 0× in the deployed one, with `(?:GRANT|REVOKE)` exactly inverted; and
+the doc section that read 0 before the deploy now reads 2 on the live site.
+
+Two blockers surfaced and were fixed properly rather than worked around:
+
+- **The server could not `git pull`.** `~/.ssh/config` pointed `github.com` at
+  `id_ed25519_emersion`, with `IdentitiesOnly yes`, while the key registered as the repo's deploy
+  key was `~/.ssh/github_deploy`. Corrected the `IdentityFile` (old config backed up). No source
+  tree was copied.
+- **The pre-cutover candidate was not inert.** It joined `flux-network`, so it could reach the
+  `flux-system` catalog — and `instrumentation.ts` runs bootstrap DDL there and starts the backup
+  scheduler on an immediate first tick. A container started only to be asked which commit it was
+  built from could have mutated production before any cutover decision. Fixed in Flux
+  [#11](https://github.com/justinkemersion/Flux/pull/11) before first use: bridge network, no
+  Docker socket, with a guard test pinning the isolation.
+
+### Disposable-tenant pooled-push smoke
+
+Tenant `provctl-smoke-0809` (hash `df249a2`, uuid-derived schema `t_2a0d252c8d4a_api`), created
+`v2_shared` for this purpose and destroyed afterwards. One synthetic migration carried five
+adaptation canaries, each chosen so it persists in the database and can be introspected.
+
+| Canary | Context | Required | Observed |
+| --- | --- | --- | --- |
+| 1 | `CREATE POLICY … TO authenticated` | adapt | `pg_policy.polroles` → `t_2a0d252c8d4a_role` |
+| 1b | `GRANT … TO authenticated` | adapt | runtime role holds `SELECT,INSERT,UPDATE,DELETE` |
+| 2 | `-- authenticated` line comment | verbatim | preserved (see note) |
+| 3 | block comment, incl. nested `/*` | verbatim | preserved (see note) |
+| 4 | string literal `'grant authenticated to impostor_role'` | verbatim | stored exactly, 0 role leaks |
+| 4b | `COMMENT ON TABLE … 'authenticated' …` | verbatim | `obj_description` exact |
+| 5 | dollar-quoted body + comment inside it | verbatim | `pg_proc.prosrc` exact, 0 role leaks |
+
+Canary 4 is the decisive one: the pre-fix adapter armed on the `grant` **inside** that string
+literal and rewrote to the next `;`, so a pre-fix control plane would have stored the tenant role
+name in the row. It stored the literal untouched. Canaries 2 and 3 sit at file top level, where
+comment text does not persist in the database; their in-body equivalent inside canary 5's
+dollar-quoted body *is* preserved verbatim, and top-level comments are semantically inert.
+
+Ledger: exactly one row, `tenant_schema = t_2a0d252c8d4a_api`, checksum
+`1a689aa10b054efdee5c1a29f2c2b235d590f80cd91587795145aee3918f7539` — identical to the local file's
+SHA-256, confirming the ledger records **pre-adapt** content and adaptation happens only at
+execution.
+
+Ownership and RLS: `canary` and `canary_id_seq` owned by `t_2a0d252c8d4a_ddl`; objects owned by the
+runtime role **0**; schema and function owned by the DDL role; `relrowsecurity` and
+`relforcerowsecurity` both true.
+
+Auth/read/write smoke, synthetic data only, 6/6: anonymous read refused (401); owner insert 201;
+owner reads exactly its own row; the DDL-inserted fixture row stays invisible under FORCE RLS;
+cross-user read returns 0 rows; cross-owner insert rejected (403). The new tenant host had no ACME
+certificate yet, so this ran against the gateway through an SSH tunnel with the tenant `Host`
+header — same gateway tenant resolution, JWT verification, PostgREST and RLS path, minus edge TLS.
+
+### Deprovision — and a lifecycle defect found
+
+`flux nuke` reported success but **only deleted the catalog row**; it purged `v1_dedicated`-shaped
+container/volume/network names that never exist for a pooled tenant. The schema, both roles, 5
+owned objects and the ledger row all survived — which manufactures exactly the orphan-schema class
+Pass 6b reports, and is a plausible origin of the 10 existing orphans. Filed as Flux
+[#12](https://github.com/justinkemersion/Flux/issues/12); not fixed here, per this task's stop
+condition.
+
+Cleanup was completed with Flux's own canonical teardown, `buildDeprovisionSql()` from
+`packages/engine-v2`, run transactionally rather than hand-rolled. Verified afterwards: schema
+absent, both roles absent, objects owned by tenant roles 0, tenant ledger rows 0, no `canary`
+relation or `canary_probe` function anywhere, catalog row gone, absent from `flux list`.
+
+### Pass 6b reconciliation — before and after, identical
+
+| | Pre-deploy | Post-cleanup |
+| --- | --- | --- |
+| catalogued rows / schemas present | 19 / 27 | 19 / 27 |
+| catalogued schemas fully healthy (`DDLROLE=yes`, `RT_OWNED=0`, `UNFORCED=0`, `AUTHUSG=yes`) | 17 / 17 | 17 / 17 |
+| orphans unadopted (no DDL role, `postgres`-owned) | 10 / 10 | 10 / 10 |
+| `RT_OWNED != 0` anywhere | 0 | 0 |
+| `UNFORCED != 0` | only `t_b86da057199a_api` = 2 | only `t_b86da057199a_api` = 2 |
+
+**Correction to the 2026-08-08 entry above,** which read "19 catalogued schemas … 8 orphan
+schemas". The reconciler's `catalogued=19` counts *catalog rows* (3 `v1_dedicated` + 16
+`v2_shared`), not schemas on the shared cluster; 17 catalogued schemas are present and orphans are
+`27 − 17 = 10`, not `27 − 19 = 8`. The substantive invariants were never wrong and have not
+changed. Re-derive, never assume.
 
 ## Stage 10 resumption
 
-**Blocked until the Flux control plane is deployed** — deliberately. Resuming requires:
+**Unblocked.** All four preconditions hold as of 2026-08-09: control plane deployed via
+`bin/deploy-web.sh` with candidate and live commit verified; `flux version --json` → `verified`;
+`flux control-plane verify` → READY; disposable-tenant pooled-push smoke passed. No override is in
+use — `FLUX_ALLOW_UNVERIFIED_CONTROL_PLANE` was never set, and the readiness gate is passing on its
+own terms.
 
-1. deploy the control plane with `bin/deploy-web.sh` (verifies candidate + live commit);
-2. `flux version --json` → `verified`;
-3. `flux control-plane verify` → READY;
-4. disposable-tenant pooled-push smoke.
+Stage 10's own migrations were **not** resumed in that task; it stopped after the deploy and
+disposable-tenant verification by instruction.
 
-`FLUX_ALLOW_UNVERIFIED_CONTROL_PLANE=1` can override the block, but doing so knowingly applies
-production migrations through the pre-fix adapter and must be recorded as a documented exception.
+### Historical distinction preserved
+
+Deploying the fixed adapter does not retroactively change what served Stage 10.
+`noisydesign 0017/0018` and `yeast-coast-2 0026/0027` were adapted by the **pre-fix** adapter on a
+control plane whose exact commit was never proven — now known to have been the `6ab8984` image.
+Their correctness continues to rest on the direct post-migration verification recorded above, not
+on artifact identity.
+
+### Follow-up noted, not actioned
+
+`bin/deploy-web.sh`'s closing hint advises running `flux doctor control-plane`; the real command is
+`flux control-plane verify`. An operator following the printed hint gets "unknown command". Left
+for the next Flux change per the stop condition.
