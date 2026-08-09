@@ -1277,3 +1277,112 @@ Rebuilt CLI: version `2.0.1`, `sourceSha 3fc6ccef47a739e146425f754fd77a3cdc9d117
 - Pre-provenance bundles report `unknown` and are refused for production mutation. That is the
   intended bootstrap behavior, but any other machine running an old `flux` must rebuild once.
 - Still open from Stage 10: single-file `--plan` preview message is mode-blind (cosmetic).
+
+---
+
+# Migration-safety controls — provenance of both halves of the boundary
+
+**Rule of record:** *Production migration readiness requires both a verified CLI artifact and a
+verified compatible deployed control plane.* Either alone is insufficient, because the CLI
+transports SQL unmodified and the deployed control plane adapts it.
+
+| Control | Status | Evidence |
+| --- | --- | --- |
+| CLI artifact provenance | **CLOSED** | Flux [#9](https://github.com/justinkemersion/Flux/pull/9), merged `16a8224` |
+| Control-plane artifact provenance | **CLOSED in code**, pending deploy | Flux [#10](https://github.com/justinkemersion/Flux/pull/10), `ff82da0` |
+
+Control-plane provenance is closed as a *contract, guard and test suite*; it is not yet in effect
+in production, because this task was explicitly not authorized to deploy Flux. Until the control
+plane is deployed, `flux control-plane verify` returns NOT READY and `flux push` refuses pooled
+production migrations — the intended fail-closed state, not a defect.
+
+## Where control-plane provenance was lost (8 gaps)
+
+`git pull` was opt-in; `.dockerignore` excludes `.git` so the image build could not learn its own
+commit and nothing passed it in; no build args; mutable `flux-web:latest` tag; restart-only cycled
+whatever `:latest` pointed at; no dirty-tree check; verification was liveness-only
+(`State.Running` + an HTTP status code) with `docker image prune -f` then destroying the previous
+image's identity; and no candidate step for web, unlike the gateway.
+
+## What now holds
+
+Provenance is resolved from the checkout before the build, passed as Docker build args, and
+inlined by Next at compile time, so the container environment cannot impersonate it — proven on
+the real artifact in CI by booting the built server with a conflicting `FLUX_BUILD_SOURCE_SHA`.
+`GET /api/health` exposes `{version, sourceSha, dirtyAtBuild, buildTimestamp,
+gatewayContractVersion, pooledPushAdapterContract}` and nothing else. `bin/deploy-web.sh` refuses
+a dirty or non-git tree, verifies an unrouted candidate's commit before cutover, tags
+`flux-web:<sha>`, and re-verifies the live container afterwards.
+
+Readiness gates on **contract agreement**, not SHA equality: `FLUX_POOLED_PUSH_ADAPTER_CONTRACT`
+is pinned to a SHA-256 digest of `pooled-push-sql-adapt.ts`, so the code that rewrites tenant SQL
+cannot change without a deliberate bump or a CI failure. Requiring SHA equality would block every
+application migration on an unrelated Flux commit; `--require-sha-match` is available for
+operators who want it.
+
+## Phase 7 — current production provenance (read-only)
+
+**Deployed SHA: UNKNOWN.** No supported mechanism can establish it:
+
+- `GET /api/health` → **404** (the endpoint ships in #10, not yet deployed)
+- `GET /api/install/cli/version` → `{"version":"1.0.0"}`, an env-driven string, not a commit
+- the image used the mutable tag `flux-web:latest`; no per-commit tag existed
+- no Docker access to the control-plane host from the operator workstation (`DOCKER_HOST` unset)
+
+**Established by read-only bracketing: the deployed control plane predates Flux #7 (`460a4aa`,
+the lexical adapter hardening).** `460a4aa` added a "Pooled push SQL adaptation" section to
+`docs/pages/architecture/bridge-jwts.md`, and the image serves `/app/docs` from the same
+`COPY . .` layer as the dashboard bundle with no docs volume mount. The live page
+`https://flux.vsl-base.com/docs/architecture/bridge-jwts` renders (control markers
+`FLUX_GATEWAY_CONTRACT_VERSION` ×2, "bridge" ×7) but contains **none** of that commit's added
+content. So the deployed `adaptPooledPushSql` is the pre-fix, whole-file regex version.
+
+Therefore **Stage 10's pooled pushes were adapted by the pre-fix adapter**, regardless of the
+`tsx`-against-source workaround — the workaround only governed the CLI, which does not adapt SQL.
+
+### Impact assessment on Stage 10 (read-only, source inspection)
+
+The pre-fix adapter differs from the fixed one only in *non-executable* contexts: comments,
+string literals, quoted identifiers and dollar-quoted bodies. All four applied migrations were
+audited:
+
+| migration | `authenticated` total | in `--` comments | in strings | `$$` bodies | `ON SCHEMA public` | `GRANT authenticated TO` |
+| --- | --- | --- | --- | --- | --- | --- |
+| nd `0017` | 9 | 1 | 0 | 0 | 0 | 0 |
+| nd `0018` | 26 | 2 | 0 | 0 | 0 | 0 |
+| yc2 `0026` | 9 | 1 | 0 | 0 | 0 | 0 |
+| yc2 `0027` | 46 | 2 | 0 | 0 | 0 | 0 |
+
+No `format(`, no `E'` strings, no `DO` blocks in any of the four. The only text the pre-fix
+adapter would have rewritten differently is prose inside `--` comment lines. **No executable
+semantics differ between the two adapters for these files.**
+
+### Result verified correct ≠ provenance historically proven
+
+Both statements stand, and they are different claims:
+
+- **Result verified correct.** Post-migration introspection confirmed the intended policies,
+  composite keys, column-scoped `ON DELETE SET NULL`, forced RLS and absence of
+  `WITH CHECK(true)`; live exploit testing rejected 32/32 cross-parent write classes while 18
+  legitimate owner writes and 5 legitimate cross-owner social interactions succeeded.
+- **Provenance not historically proven.** The exact commit that served those requests remains
+  UNKNOWN, and the adapter generation is now known to have been the pre-fix one. Stage 10's
+  correctness rests on direct verification of the outcome, not on artifact identity.
+
+## Phase 8 — not deployed
+
+No Flux deploy and no application migration were performed. Deployment plan, including a
+disposable-tenant pooled-push smoke that exercises `TO authenticated` in executable SQL alongside
+the same token in a comment and a dollar-quoted body, is in `docs/CONTROL-PLANE-PROVENANCE.md`.
+
+## Stage 10 resumption
+
+**Blocked until the Flux control plane is deployed** — deliberately. Resuming requires:
+
+1. deploy the control plane with `bin/deploy-web.sh` (verifies candidate + live commit);
+2. `flux version --json` → `verified`;
+3. `flux control-plane verify` → READY;
+4. disposable-tenant pooled-push smoke.
+
+`FLUX_ALLOW_UNVERIFIED_CONTROL_PLANE=1` can override the block, but doing so knowingly applies
+production migrations through the pre-fix adapter and must be recorded as a documented exception.
