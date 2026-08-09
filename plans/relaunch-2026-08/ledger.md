@@ -474,7 +474,34 @@ What is genuinely wrong, in order:
 4. Stale and unguarded: last commit `2026-05-03`, npm rather than pnpm, no `.github/workflows`,
    non-standard `db/migrations/` path, so no CI and no Foundry baseline.
 
-## STOP-THE-LINE — live unauthenticated write primitive on `mailpilot-ai`
+## RESOLVED — `mailpilot-ai` exposure closed and verified
+
+Containment ran with **no exposure window**: `flux project sleep` (verified `502`), then only the
+`flux-02d83e6-mailpilot-ai-db` container was started via the `vsl-cloud` docker context so the
+migration could be applied with PostgREST still down, then `flux project wake`.
+
+Fix is `flux/migrations/008_phase9_rls.sql` (mailpilot-ai PR #1), mirroring the `001` convention:
+`auth.uid() = user_id`, no `to` clause, plus a parent-`accounts` ownership proof on every write,
+and `mail_action_log` kept append-only. Post-apply, all 7 tables in `api` carry RLS with policies,
+unauthenticated reads return `[]`, and an unauthenticated write is refused:
+
+```
+POST /mail_categories -> 42501 new row violates row-level security policy for table "mail_categories"
+```
+
+Row counts confirm the canary wrote nothing. Platform cause filed as **Flux issue #8**.
+
+Two follow-ups deliberately left open: `001_mailpilot_init.sql` has a **checksum conflict** with
+the remote ledger (edited `2026-06-17` in `68bd8b1` after being applied `2026-06-03`), which
+blocks directory-mode `flux push` for this project — so `008` went in as a single-file push and is
+not recorded in `flux.flux_migrations`; it is idempotent, so a later recorded re-apply is safe.
+And `mailpilot-ai` CI has been red since `2026-06-19` for unrelated reasons: `ci.yml` runs
+`pip install -e ".[dev]"`/`pytest` at the repo root while the Python project is
+`mailpilot-runner/`, and once that is corrected 15 of 70 tests still fail from a single cause —
+`email_processor.py:425` reads `processed_repo._client`, a private attribute the in-memory test
+doubles do not have.
+
+## Original finding — live unauthenticated write primitive on `mailpilot-ai`
 
 Found by live verification, not by source analysis. **No deployment stage should proceed until
 this is closed.**
