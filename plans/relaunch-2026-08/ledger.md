@@ -357,3 +357,128 @@ Stage 7's gate cannot honestly pass while the app-specific child-ownership failu
 Escalated rather than improvised: remediating ~130 table→parent links across 9 repos is a
 cross-repo security program, not a finishing step, and `plans/` discipline forbids inventing
 it unilaterally.
+
+## Iteration — child-ownership triage, corrected severity model
+
+The 408 `child-row-parent-ownership` failures are **not one defect**. Reading the policies
+alongside how each child table is *read* splits them into three classes with very different
+consequences. The analyzer reports all three identically, so its raw count cannot serve as the
+Stage 7 gate.
+
+### Class A — cross-tenant read breach (`roommating`) — FIXED
+
+`0006` authorized `household_members` writes with `(jwt.sub) = user_id` **or** an owner check.
+The first branch is satisfied by any caller inserting a row carrying their own `user_id` with an
+arbitrary `household_id`, so anyone could join any household. Every other table here authorizes
+by membership, so self-joining escalated into read access to that household's chores, bills,
+settlements, and activity. `household_members_update` allowed self-promotion to `owner`.
+
+Fixed in `0009_household_membership_authority.sql` (PR #5, merged, `main` = `879694b`): all
+three write policies now prove authority against the parent `households` row. That matches the
+app — `createHousehold` writes the creator's owner row right after the household it owns,
+`addHouseholdMember` is owner-only and always writes `role = 'member'`, and nothing promotes.
+
+`chores`, `house_bills`, `settlements`, `house_activity` were **deliberately left alone**. Their
+write policies already require household membership, which *is* this app's parent-ownership
+proof. Tightening them to `households.user_id` would lock every non-owner member out of a
+shared household. The analyzer still reports those 12 as FAIL — it cannot equate a
+junction-table membership proof with ownership of the parent row.
+
+### Class B — public content injection (`noisydesign`, `yeast-coast-2`) — HIGH, open
+
+This is the class that actually completes an exploit chain, and the analyzer never distinguished
+it. The write policy is unrestricted:
+
+```sql
+-- 0011_noisydesign_tags_process_featured.sql
+create policy photo_tags_insert on photo_tags for insert to authenticated with check (
+  (current_setting('request.jwt.claims', true)::json->>'sub') = user_id
+);
+```
+
+while the visitor read policy authorizes on the **parent** and never checks the child's
+`user_id`:
+
+```sql
+-- 0012_noisydesign_public_read.sql
+create policy photo_tags_visitor_public_read on photo_tags for select to authenticated using (
+  (jwt.sub) = 'noisydesign-visitor'
+  and exists (select 1 from photos p
+              where p.id = photo_tags.photo_id
+                and p.status = 'published' and p.visibility = 'public')
+);
+```
+
+So a row inserted by one tenant against another tenant's published photo **renders publicly on
+the victim's page**. Same shape for `featured_items` (reaches the front page), `essay_blocks`,
+`issue_items`, `roll_photos`, `photo_assets`.
+
+`yeast-coast-2` is identical via `0014_yeast_coast_public_read.sql`:
+`variant_ingredients`, `variant_mash_steps`, `variant_stats`, `variant_media`, `media_assets`
+are all exposed through the parent `recipe_variants` published/public state with no child
+`user_id` check — injected ingredients or media would appear on a victim's published recipe.
+
+### Class C — integrity only (`balance`, `casa-panel`) — LOW, open
+
+**Correction to the earlier escalation.** It claimed "the victim's UI reads children by
+parent_id." That is false for these two. Every child table carries its own `user_id` and every
+SELECT policy filters on it, so an injected row is *invisible to the victim*:
+
+```sql
+-- 0008_balance_meals.sql
+create policy meal_components_select on meal_components for select to authenticated using (
+  (current_setting('request.jwt.claims', true)::json->>'sub') = user_id
+);
+```
+
+Neither repo has any `security definer` function or public-read policy that could bypass that
+filter (verified by grep across all migrations). Real exposure is a contract violation plus a
+foreign-key existence oracle over unguessable UUIDs. Worth fixing; **not** release-blocking.
+`balance` is 9 links × 3 write policies = 27; `casa-panel` 36.
+
+### Analyzer precision is now a tracked upstream item
+
+Decision: teach the analyzer both rules in Foundry — accept membership/parent delegation as
+valid proof, and rank a child as high severity only when it is readable via parent delegation.
+Per the no-shims rule this is an upstream fix, not per-repo suppressions.
+
+## Iteration — `casa-panel` divergence resolved
+
+Local `main` had 1 unpushed commit against 3 unpulled remote commits. Rebased onto `origin/main`
+and shipped as PR #5 so it got CI and review rather than being discarded. Merged;
+`main` = `d1e3190`, clean, synced.
+
+## Iteration — `percept` assessed (deployed, and less exposed than reported)
+
+**It is live.** `flux list` shows `percept` `b915ec8` Active/Running at
+`https://api--percept--b915ec8.vsl-base.com`, and the hash matches the local `flux.json`
+exactly. Not an abandoned prototype. The API **fails closed**: unauthenticated `GET /moods` and
+`GET /` both return `401`.
+
+**Correction:** the earlier escalation said `lib/flux/client.ts` "references `NEXT_PUBLIC_FLUX_*`
+(inlined into the browser bundle)." That overstated it. The only reference is a *URL* fallback
+(`process.env.FLUX_URL ?? process.env.NEXT_PUBLIC_FLUX_URL`) inside a server module; the base
+URL is not a secret, and no key or JWT is client-side. The one client component that touches
+`lib/flux` uses `import type { MoodOutputRow }`, which is erased at compile time. **No
+browser-side credential exposure.**
+
+What is genuinely wrong, in order:
+
+1. **No `FORCE RLS`** anywhere in `db/migrations/` (16 policies, 3 migrations). If percept's
+   runtime role also owns its tables — likely, since it predates the `t_<hex>_ddl` /
+   `t_<hex>_role` split — RLS is bypassed for that role and every tenant's `moods` are readable.
+   This is the item that decides percept's real severity and needs a DB-level ownership check.
+2. **Child-ownership** on `mood_outputs.mood_id -> moods`, same shape as Class C.
+3. **No sanitizing `actionError`** — and `FluxHttpError` embeds up to 400 chars of the Flux
+   response body in its message, so a thrown error can carry Flux detail to the client.
+4. Stale and unguarded: last commit `2026-05-03`, npm rather than pnpm, no `.github/workflows`,
+   non-standard `db/migrations/` path, so no CI and no Foundry baseline.
+
+## Live projects absent from the audit set
+
+`flux list` returns 17 running projects; the invariant table above covers 14 of them. Never
+audited: **`bloom-atelier`**, **`mailpilot-ai`**, **`yeastcoast`** (the last is probably the
+superseded predecessor of `yeast-coast-2`, but it is still Active/Running). `the-shelf` and
+`yeastcoast` have no local checkout, so they cannot be audited from this workstation as-is.
+Completion criteria cannot claim a clean fleet while three live projects have never been
+evaluated.
